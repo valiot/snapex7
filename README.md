@@ -1,6 +1,8 @@
 # Snapex7
 
-**TODO: Add description**
+A wrapper of snap7 for Elixir.
+
+**TODO: Better handling c code**
 
 ## Installation
 

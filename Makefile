@@ -23,6 +23,7 @@ OS_PATH = /build/$(OS)
 
 SNAP7_PATH = src/snap7
 
+
 ifeq ($(ERL_EI_INCLUDE_DIR),)
 ERL_ROOT_DIR = $(shell erl -eval "io:format(\"~s~n\", [code:root_dir()])" -s init stop -noshell)
 ifeq ($(ERL_ROOT_DIR),)
@@ -38,27 +39,27 @@ LDFLAGS +=
 CFLAGS += -std=gnu99
 # Enable for debug messages
 CFLAGS += -DDEBUG
-CC ?= $(CROSSCOMPILER)gcc
+CC ?= $(CROSSCOMPILER)-gcc
 
 SRC = $(wildcard src/*.c) 
+SRC_PATH = src
 OBJ = $(SRC:.c=.o)
 
 .PHONY: all clean
 
 all: priv/snap7
 
-%.o: %.c
-	@echo debug: $(CC) $(CROSSCOMPILER)
+
+
+priv/snap7: $(OBJ)
+	@mkdir -p priv
+	make -C $(SNAP7_PATH)$(OS_PATH) -f $(TARGET).mk install LibInstall=../../../libsnap.so
+	$(CC) -O3 -v $^ -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o $@
+
+%.o:%.c
+	@echo debug1: $^
 	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) -o $@ $<
 
-priv/snap7: libsnap7.so #$(OBJ)
-	@mkdir -p priv
-	#$(CC) $^ $(ERL_LDFLAGS) $(LDFLAGS) -o $@
-
-libsnap7.so:
-	@echo $(SNAP7_PATH)$(OS_PATH)
-	make -C $(SNAP7_PATH)$(OS_PATH) -f $(TARGET).mk install LibInstall=../../../libsnap7.so
-
 clean:
-	rm -f priv/snap7 src/*.o src/*.so
+	rm -f priv/snap7 src/*.o src/*.so src/*.o
 	make -C $(SNAP7_PATH)$(OS_PATH) -f $(TARGET).mk clean
