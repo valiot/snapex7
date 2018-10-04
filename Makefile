@@ -22,7 +22,7 @@ endif
 OS_PATH = /build/$(OS)
 
 SNAP7_PATH = src/snap7
-
+S7_H_PATH = /examples/plain-c
 
 ifeq ($(ERL_EI_INCLUDE_DIR),)
 ERL_ROOT_DIR = $(shell erl -eval "io:format(\"~s~n\", [code:root_dir()])" -s init stop -noshell)
@@ -51,14 +51,16 @@ all: priv/snap7
 
 
 
-priv/snap7: $(OBJ)
-	@mkdir -p priv
+priv/snap7: $(OBJ) snap7
+	mkdir -p priv
+	$(CC) -O3 -v $(OBJ) -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o $@
+
+snap7:
 	make -C $(SNAP7_PATH)$(OS_PATH) -f $(TARGET).mk install LibInstall=../../../libsnap.so
-	$(CC) -O3 -v $^ -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o $@
 
 %.o:%.c
 	@echo debug1: $^
-	$(CC) -c $(ERL_CFLAGS) $(CFLAGS) -o $@ $<
+	$(CC) -c $(ERL_CFLAGS) -I$(SNAP7_PATH)$(S7_H_PATH) $(CFLAGS) -o $@ $<
 
 clean:
 	rm -f priv/snap7 src/*.o src/*.so src/*.o

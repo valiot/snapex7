@@ -18,11 +18,13 @@ int main()
     struct erlcmd handler;
     Client = Cli_Create();
 
-    Cli_ConnectTo(Client,"192.168.10.100",0,2);
+    Cli_ConnectTo(Client,"192.168.0.1",0,1);
 
-    Cli_DBRead(Client, 32, 0, 16, &MyDB32);
+    Cli_DBRead(Client, 1, 2, 4, MyDB32);
 
-    Cli_Destroy(&Client);
-    printf("Ejecute\n");   
-    erlcmd_process(&handler);
+    printf("0x");
+    printf("%04x", MyDB32[0]);
+    printf("\n");
+    
+    Cli_Destroy(&Client);    
 }
