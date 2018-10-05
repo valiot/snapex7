@@ -1,5 +1,5 @@
 /*
- *  Copyright 2014 Frank Hunleth
+ *  Copyright 2016 Frank Hunleth
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -12,8 +12,6 @@
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  * See the License for the specific language governing permissions and
  * limitations under the License.
- *
- * Common Erlang->C port communications declarations
  */
 
 #ifndef ERLCMD_H
@@ -21,10 +19,14 @@
 
 #include <ei.h>
 
+#ifdef __WIN32__
+#include <windows.h>
+#endif
+
 /*
  * Erlang request/response processing
  */
-#define ERLCMD_BUF_SIZE 1024
+#define ERLCMD_BUF_SIZE 16384 // Large size is to support large UART writes
 struct erlcmd
 {
     char buffer[ERLCMD_BUF_SIZE];
@@ -32,12 +34,26 @@ struct erlcmd
 
     void (*request_handler)(const char *emsg, void *cookie);
     void *cookie;
+
+#ifdef __WIN32__
+    HANDLE h;
+    OVERLAPPED overlapped;
+
+    HANDLE stdin_reader_thread;
+    HANDLE stdin_read_pipe;
+    HANDLE stdin_write_pipe;
+    BOOL running;
+#endif
 };
 
 void erlcmd_init(struct erlcmd *handler,
 		 void (*request_handler)(const char *req, void *cookie),
 		 void *cookie);
 void erlcmd_send(char *response, size_t len);
-void erlcmd_process(struct erlcmd *handler);
+int erlcmd_process(struct erlcmd *handler);
+
+#ifdef __WIN32__
+HANDLE erlcmd_wfmo_event(struct erlcmd *handler);
+#endif
 
 #endif

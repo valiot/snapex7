@@ -47,13 +47,15 @@ OBJ = $(SRC:.c=.o)
 
 .PHONY: all clean
 
-all: priv/snap7
+all: snap7 priv/snap7
 
-
-
-priv/snap7: $(OBJ) snap7
+priv/snap7: $(OBJ) 
+	@echo $(OBJ)
 	mkdir -p priv
-	$(CC) -O3 -v $(OBJ) -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o $@
+	#$(CC) -O3 -v $(OBJ) -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o $@
+	$(CC) -O3 src/erlcmd.o src/s7_client.o src/util.o -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o priv/s7_client
+	$(CC) -O3 src/erlcmd.o src/s7_server.o src/util.o -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o priv/s7_server
+	$(CC) -O3 src/erlcmd.o src/s7_partner.o src/util.o -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o priv/s7_partner
 
 snap7:
 	make -C $(SNAP7_PATH)$(OS_PATH) -f $(TARGET).mk install LibInstall=../../../libsnap.so
