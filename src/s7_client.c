@@ -9,9 +9,67 @@
 
 S7Object Client;
 
-// Utilities for communication 
+// Utilities for communication and error handling
 static const char response_id = 'r';
 static const char notification_id = 'n';
+const char err_s7[0x26][37] = { 
+    "errNegotiatingPDU",
+    "errCliInvalidParams", 
+    "errCliJobPending",
+    "errCliTooManyItems",
+    "errCliInvalidWordLen",
+    "errCliPartialDataWritten",
+    "errCliSizeOverPDU",
+    "errCliInvalidPlcAnswer",
+    "errCliAddressOutOfRange",
+    "errCliInvalidTransportSize",
+    "errCliWriteDataSizeMismatch",
+    "errCliItemNotAvailable",
+    "errCliInvalidValue",
+    "errCliCannotStartPLC",
+    "errCliAlreadyRun",
+    "errCliCannotStopPLC",
+    "errCliCannotCopyRamToRom",
+    "errCliCannotCompress",
+    "errCliAlreadyStop",
+    "errCliFunNotAvailable",
+    "errCliUploadSequenceFailed",
+    "errCliInvalidDataSizeRecvd",
+    "errCliInvalidBlockType",
+    "errCliInvalidBlockNumber",
+    "errCliInvalidBlockSize",
+    "errCliDownloadSequenceFailed",
+    "errCliInsertRefused",
+    "errCliDeleteRefused",
+    "errCliNeedPassword",
+    "errCliInvalidPassword",
+    "errCliNoPasswordToSetOrClear",
+    "errCliJobTimeout",
+    "errCliPartialDataRead",
+    "errCliBufferTooSmall",
+    "errCliFunctionRefused",
+    "errCliInvalidParamNumber",
+    "errCliDestroying",
+    "errCliCannotChangeParam"
+    };
+
+const char err_iso[0x0F][37] = {
+    "errIsoConnect",
+    "errIsoDisconnect",
+    "errIsoInvalidPDU",
+    "errIsoInvalidDataSize",
+    "errIsoNullPointer",
+    "errIsoShortPacket",
+    "errIsoTooManyFragments",
+    "errIsoPduOverflow",
+    "errIsoSendPacket",
+    "errIsoRecvPacket",
+    "errIsoInvalidParams",
+    "errIsoResvd_1",
+    "errIsoResvd_2",
+    "errIsoResvd_3",
+    "errIsoResvd_4"
+};
 
 struct client_config
 {
@@ -20,6 +78,7 @@ struct client_config
     int rack;             // 5, 6, 7, 8
     int socket;           // 1 or 2
 };
+
 /**
  * @brief Send :ok back to Elixir
  */
@@ -49,20 +108,60 @@ static void send_error_response(const char *reason)
     ei_encode_atom(resp, &resp_index, reason);
     erlcmd_send(resp, resp_index);
 }
+/*
+    Funtion to handle snap7 error messages (Client table error)
+    Check documentation snap7/doc/snap7-refman.pdf for more details (pg. 253)
+*/
 
+static void send_snap7_errors(uint32_t code)
+{
+    int index_s7 = code / 0x100000;
+    int index_iso = (code & 0x000F0000)/ 0x10000;
+    int index_tcp = (code & 0xFFFF);
+    if(index_s7 != 0)
+    {
+        send_error_response(err_s7[index_s7-1]);
+    }
+    else if(index_s7 != 0)
+    {
+        send_error_response(err_s7[index_iso-1]);
+    }
+    else
+    {
+        char err_tcp[10];
+        sprintf(err_tcp, "etcp%d", index_tcp);
+        send_error_response(err_tcp);
+    }   
+}
+
+static void debug_str(const char *msg)
+{
+    send_error_response(msg);
+}
+
+static void debug_vars(unsigned long var)
+{
+    char msg[10];
+    sprintf(msg, "val=%ld", (int)var);
+    send_error_response(msg);
+}
 
 /* 
- * Snap7 Handlers
- */
+    Snap7 Handlers
+*/
+
+/* 
+    Administrative functions
+*/
 
 /*
-  Sets the connection resource type, i.e the way in which the Clients
-   connects to a PLC.
-  :param connection_type(int): 1 for PG, 2 for OP, 3 to 10 for S7 Basic
+    Sets the connection resource type, i.e the way in which the Clients
+    connects to a PLC.
+    :param connection_type(int): 1 for PG, 2 for OP, 3 to 10 for S7 Basic
 */
 static void handle_set_connection_type(const char *req, int *req_index)
 {
-    uint16_t val;
+    char val;
     if (ei_decode_char(req, req_index, &val) < 0) {
         send_error_response("einval");
         return;
@@ -71,11 +170,108 @@ static void handle_set_connection_type(const char *req, int *req_index)
     int result = Cli_SetConnectionType(Client, val);
     if (result != 0)
         //the paramater was invalid.
-        send_error_response("eio");
+        send_snap7_errors(result);
             
     send_ok_response();
-
 }
+
+/*
+    Connect to a S7 server.
+    :param address: IP address of server
+    :param rack: rack on server
+    :param slot: slot on server.
+*/
+static void handle_connect_to(const char *req, int *req_index)
+{   
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":open requires a 2-tuple, term_size = %d", term_size);
+
+    char ip[20];
+    long binary_len;
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+            term_type != ERL_BINARY_EXT ||
+            term_size >= (int) sizeof(ip) ||
+            ei_decode_binary(req, req_index, ip, &binary_len) < 0) {
+        // The name is almost certainly too long, so report that it
+        // doesn't exist.
+        send_error_response("enoent");
+        return;
+    }
+    ip[term_size] = '\0';
+
+    unsigned long rack;
+    if (ei_decode_ulong(req, req_index, &rack) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long slot;
+    if (ei_decode_ulong(req, req_index, &slot) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    int result = Cli_ConnectTo(Client, ip, (int)rack, (int)slot);
+    if (result != 0)
+        //the paramater was invalid.
+        send_snap7_errors(result);
+            
+    send_ok_response();
+}
+
+/*
+    Sets internally (IP, LocalTSAP, RemoteTSAP) Coordinates.
+    this function must be called just before Cli_Connect().
+    :param address: PLC/Equipment IPV4 Address, for example "192.168.1.12"
+    :param local_tsap: Local TSAP (PC TSAP)
+    :param remote_tsap: Remote TSAP (PLC TSAP)
+*/
+static void handle_set_connection_params(const char *req, int *req_index)
+{   
+
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":open requires a 3-tuple, term_size = %d", term_size);
+
+    char ip[20];
+    long binary_len;
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+            term_type != ERL_BINARY_EXT ||
+            term_size >= (int) sizeof(ip) ||
+            ei_decode_binary(req, req_index, ip, &binary_len) < 0) {
+        // The name is almost certainly too long, so report that it
+        // doesn't exist.
+        send_error_response("enoent");
+        return;
+    }
+    ip[term_size] = '\0';
+
+    unsigned long local_tsap;
+    if (ei_decode_ulong(req, req_index, &local_tsap) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long remote_tsap;
+    if (ei_decode_ulong(req, req_index, &remote_tsap) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    int result = Cli_SetConnectionParams(Client, ip, (uint16_t)local_tsap, (uint16_t)remote_tsap);
+    if (result != 0)
+        //the paramater was invalid.
+        send_snap7_errors(result);
+            
+    send_ok_response();
+}
+
+
 
 static void handle_test(const char *req, int *req_index)
 {
@@ -100,6 +296,8 @@ struct request_handler {
 static struct request_handler request_handlers[] = {
     { "test", handle_test},
     {"set_connection_type", handle_set_connection_type},
+    {"connect_to", handle_connect_to},
+    {"set_connection_params", handle_set_connection_params},
     { NULL, NULL }
 };
 

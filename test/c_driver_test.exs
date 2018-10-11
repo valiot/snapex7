@@ -12,7 +12,7 @@ defmodule CDriverTest do
   test "Erlang - C driver test", state do
     msg = {:test, "x"}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
-    timeout = 1000
+
     c_response =
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
@@ -21,7 +21,7 @@ defmodule CDriverTest do
           IO.inspect(x)
           :error
       after
-        timeout ->
+        1000 ->
           # Not sure how this can be recovered
           exit(:port_timed_out)
       end
@@ -31,7 +31,7 @@ defmodule CDriverTest do
   test "set_connection_type test", state do
     msg = {:set_connection_type, 1}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
-    timeout = 1000
+
     c_response =
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
@@ -40,12 +40,52 @@ defmodule CDriverTest do
           IO.inspect(x)
           :error
       after
-        timeout ->
+        1000 ->
           # Not sure how this can be recovered
           exit(:port_timed_out)
       end
 
     assert c_response == :ok
+  end
+
+  test "handle_set_connection_params test", state do
+    msg = {:set_connection_params, {"192.168.1.100", 1, 2}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == :ok
+  end
+
+  test "handle_connect_to test", state do
+    msg = {:connect_to, {"192.168.1.0", 0, 1}}
+    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
+    c_response =
+      receive do
+        {_, {:data, <<?r, response::binary>>}} ->
+          :erlang.binary_to_term(response)
+        x ->
+          IO.inspect(x)
+          :error
+      after
+        1000 ->
+          # Not sure how this can be recovered
+          exit(:port_timed_out)
+      end
+
+    assert c_response == {:error, :etcp113}
   end
 
 end
