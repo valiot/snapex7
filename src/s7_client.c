@@ -108,30 +108,48 @@ static void send_error_response(const char *reason)
     ei_encode_atom(resp, &resp_index, reason);
     erlcmd_send(resp, resp_index);
 }
-/*
-    Funtion to handle snap7 error messages (Client table error)
-    Check documentation snap7/doc/snap7-refman.pdf for more details (pg. 253)
-*/
 
+/**
+ * @brief Send a response of the form {:error, reasons}
+ *  where 'reasons' is map (%{es7: atom/nil, eiso: atom/nil, etcp: int/nil}), 
+ *  (check documentation 'snap7/doc/snap7-refman.pdf' for more details,
+ *  pg. 253) or nil if no error related to that key.
+ * @param code, is an error code from snap7 source code.
+ */
 static void send_snap7_errors(uint32_t code)
 {
+    char resp[256];
     int index_s7 = code / 0x100000;
     int index_iso = (code & 0x000F0000)/ 0x10000;
     int index_tcp = (code & 0xFFFF);
+    int resp_index = sizeof(uint16_t); // Space for payload size
+    
+    resp[resp_index++] = response_id;
+    ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "error");
+    ei_encode_map_header(resp, &resp_index, 3);
+    
+    ei_encode_atom(resp, &resp_index, "es7");
     if(index_s7 != 0)
-    {
-        send_error_response(err_s7[index_s7-1]);
-    }
-    else if(index_s7 != 0)
-    {
-        send_error_response(err_s7[index_iso-1]);
-    }
+        ei_encode_atom(resp, &resp_index, err_s7[index_s7-1]);
     else
-    {
-        char err_tcp[10];
-        sprintf(err_tcp, "etcp%d", index_tcp);
-        send_error_response(err_tcp);
-    }   
+        ei_encode_atom(resp, &resp_index, "nil");
+    
+    ei_encode_atom(resp, &resp_index, "eiso");
+    if(index_iso != 0)
+        ei_encode_atom(resp, &resp_index, err_s7[index_iso-1]);
+    else
+        ei_encode_atom(resp, &resp_index, "nil");
+
+    ei_encode_atom(resp, &resp_index, "etcp");
+    if(index_tcp != 0)
+        ei_encode_char(resp, &resp_index, index_tcp);
+    else
+        ei_encode_atom(resp, &resp_index, "nil");
+
+
+    erlcmd_send(resp, resp_index);
 }
 
 static void debug_str(const char *msg)
@@ -142,7 +160,7 @@ static void debug_str(const char *msg)
 static void debug_vars(unsigned long var)
 {
     char msg[10];
-    sprintf(msg, "val=%ld", (int)var);
+    sprintf(msg, "val=%d", (int)var);
     send_error_response(msg);
 }
 
@@ -150,9 +168,7 @@ static void debug_vars(unsigned long var)
     Snap7 Handlers
 */
 
-/* 
-    Administrative functions
-*/
+//    Administrative functions
 
 /*
     Sets the connection resource type, i.e the way in which the Clients
@@ -187,7 +203,7 @@ static void handle_connect_to(const char *req, int *req_index)
     int term_size;
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 3)
-        errx(EXIT_FAILURE, ":open requires a 2-tuple, term_size = %d", term_size);
+        errx(EXIT_FAILURE, ":open requires a 3-tuple, term_size = %d", term_size);
 
     char ip[20];
     long binary_len;
@@ -216,7 +232,6 @@ static void handle_connect_to(const char *req, int *req_index)
     
     int result = Cli_ConnectTo(Client, ip, (int)rack, (int)slot);
     if (result != 0)
-        //the paramater was invalid.
         send_snap7_errors(result);
             
     send_ok_response();
@@ -271,6 +286,32 @@ static void handle_set_connection_params(const char *req, int *req_index)
     send_ok_response();
 }
 
+/**
+ * Connects the client to the PLC with the parameters specified in the previous call of
+ * Cli_ConnectTo() or Cli_SetConnectionParams(), usually used after Cli_Disconnect().
+*/
+static void handle_connect(const char *req, int *req_index)
+{   
+    
+    int result = Cli_Connect(Client);
+    if (result != 0)
+        send_snap7_errors(result);
+            
+    send_ok_response();
+}
+/**
+ *  Disconnects “gracefully” the Client from the PLC. 
+*/
+static void handle_disconnect(const char *req, int *req_index)
+{   
+    
+    int result = Cli_Disconnect(Client);
+    if (result != 0)
+        send_snap7_errors(result);
+            
+    send_ok_response();
+}
+
 
 
 static void handle_test(const char *req, int *req_index)
@@ -298,6 +339,8 @@ static struct request_handler request_handlers[] = {
     {"set_connection_type", handle_set_connection_type},
     {"connect_to", handle_connect_to},
     {"set_connection_params", handle_set_connection_params},
+    {"connect", handle_connect},
+    {"disconnect", handle_disconnect},
     { NULL, NULL }
 };
 

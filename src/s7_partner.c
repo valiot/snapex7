@@ -17,12 +17,15 @@ int main()
 {
     struct erlcmd handler;
     Client = Cli_Create();
-
-    int result = Cli_ConnectTo(Client,"192.168.1.100",0,1);
+    void *param;
+    int result = Cli_ConnectTo(Client,"192.168.0.1",0,1);
     printf("r = %d", result);
 
     Cli_DBRead(Client, 1, 2, 4, MyDB32);
 
+    result = Cli_GetParam(Client, 2, param);
+    printf("r = %d", result);
+    printf("r = %d", (int16_t)param);
     // printf("0x");
     // printf("%04x", MyDB32[0]);
     printf("\n");

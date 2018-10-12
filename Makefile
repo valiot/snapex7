@@ -53,9 +53,9 @@ priv/snap7: $(OBJ)
 	@echo $(OBJ)
 	mkdir -p priv
 	#$(CC) -O3 -v $(OBJ) -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o $@
-	$(CC) -O3 src/erlcmd.o src/s7_client.o src/util.o -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o priv/s7_client
-	$(CC) -O3 src/erlcmd.o src/s7_server.o src/util.o -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o priv/s7_server
-	$(CC) -O3 src/erlcmd.o src/s7_partner.o src/util.o -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o priv/s7_partner
+	$(CC) -O3 src/erlcmd.o src/s7_client.o src/util.o -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o priv/s7_client.o
+	$(CC) -O3 src/erlcmd.o src/s7_server.o src/util.o -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o priv/s7_server.o
+	$(CC) -O3 src/erlcmd.o src/s7_partner.o src/util.o -L$(SRC_PATH) -I$(SRC_PATH) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o priv/s7_partner.o
 
 snap7:
 	make -C $(SNAP7_PATH)$(OS_PATH) -f $(TARGET).mk install LibInstall=../../../libsnap.so
@@ -65,5 +65,6 @@ snap7:
 	$(CC) -c $(ERL_CFLAGS) -I$(SNAP7_PATH)$(S7_H_PATH) $(CFLAGS) -o $@ $<
 
 clean:
-	rm -f priv/snap7 src/*.o src/*.so src/*.o
+	rm -f priv/*.o src/*.o src/*.so src/*.o
+	rm -rf /priv
 	make -C $(SNAP7_PATH)$(OS_PATH) -f $(TARGET).mk clean
