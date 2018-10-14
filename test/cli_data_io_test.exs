@@ -1,4 +1,4 @@
-defmodule CDriverTest do
+defmodule CliDataIoTest do
   use ExUnit.Case
   doctest Snapex7
 
@@ -9,8 +9,8 @@ defmodule CDriverTest do
     %{port: port}
   end
 
-  test "Erlang - C driver test", state do
-    msg = {:test, "x"}
+  test "handler_read_area test", state do
+    msg = {:read_area, {}}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -25,6 +25,7 @@ defmodule CDriverTest do
           # Not sure how this can be recovered
           exit(:port_timed_out)
       end
+
     assert c_response == :ok
   end
 end

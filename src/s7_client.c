@@ -93,6 +93,48 @@ static void send_ok_response()
 }
 
 /**
+ * @brief Send data back to Elixir in form of {:ok, data}
+ */
+static void send_data_response(void *data, int data_type)
+{
+    char resp[256];
+    int resp_index = sizeof(uint16_t); // Space for payload size
+    resp[resp_index++] = response_id;
+    ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "ok");
+    
+    switch(data_type)
+    {
+        case 1: //signed (long)
+            ei_encode_long(resp, &resp_index,*(int32_t *)data);
+        break;
+
+        case 2: //unsigned (long)
+            ei_encode_ulong(resp, &resp_index,*(uint32_t *)data);
+        break;
+
+        case 3: //strings
+            ei_encode_string(resp, &resp_index, data);
+        break;
+
+        case 4: //doubles
+            ei_encode_double(resp, &resp_index, *(double *)data );
+        break;
+
+        case 5: //arrays
+            ei_encode_binary(resp, &resp_index, data, sizeof(data));
+        break;
+
+        default:
+            errx(EXIT_FAILURE, "data_type error");
+        break;
+    }
+
+    erlcmd_send(resp, resp_index);
+}
+
+/**
  * @brief Send a response of the form {:error, reason}
  *
  * @param reason a reason (sent back as an atom)
@@ -184,9 +226,11 @@ static void handle_set_connection_type(const char *req, int *req_index)
     }
 
     int result = Cli_SetConnectionType(Client, val);
-    if (result != 0)
+    if (result != 0){
         //the paramater was invalid.
         send_snap7_errors(result);
+        return;
+    }
             
     send_ok_response();
 }
@@ -231,8 +275,11 @@ static void handle_connect_to(const char *req, int *req_index)
     }
     
     int result = Cli_ConnectTo(Client, ip, (int)rack, (int)slot);
-    if (result != 0)
+    if (result != 0){
+        //the paramater was invalid.
         send_snap7_errors(result);
+        return;
+    }
             
     send_ok_response();
 }
@@ -246,7 +293,6 @@ static void handle_connect_to(const char *req, int *req_index)
 */
 static void handle_set_connection_params(const char *req, int *req_index)
 {   
-
     int term_type;
     int term_size;
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
@@ -279,9 +325,11 @@ static void handle_set_connection_params(const char *req, int *req_index)
     }
 
     int result = Cli_SetConnectionParams(Client, ip, (uint16_t)local_tsap, (uint16_t)remote_tsap);
-    if (result != 0)
+    if (result != 0){
         //the paramater was invalid.
         send_snap7_errors(result);
+        return;
+    }
             
     send_ok_response();
 }
@@ -294,8 +342,11 @@ static void handle_connect(const char *req, int *req_index)
 {   
     
     int result = Cli_Connect(Client);
-    if (result != 0)
+    if (result != 0){
+        //the paramater was invalid.
         send_snap7_errors(result);
+        return;
+    }
             
     send_ok_response();
 }
@@ -306,13 +357,112 @@ static void handle_disconnect(const char *req, int *req_index)
 {   
     
     int result = Cli_Disconnect(Client);
-    if (result != 0)
+    if (result != 0){
+        //the paramater was invalid.
         send_snap7_errors(result);
+        return;
+    }
             
     send_ok_response();
 }
 
+/**
+ *  Reads an internal Client object parameter. (details in pg.)
+*/
+static void handle_get_params(const char *req, int *req_index)
+{   
+    
+    char ind_param;
+    int result;
 
+    if (ei_decode_char(req, req_index, &ind_param) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    uint32_t data;
+    switch (ind_param)
+    {
+        case 2: //
+        case 7: // u16
+        case 8: // 
+        case 9: 
+            result = Cli_GetParam(Client, ind_param, &data);
+            if (result != 0){
+                //the paramater was invalid.
+                send_snap7_errors(result);
+                return;
+            }
+            send_data_response(&data, 2);
+        break;
+        
+        case 3: //
+        case 4: // s16
+        case 5: //
+        case 10:
+            result = Cli_GetParam(Client, ind_param, &data);
+            if (result != 0){
+                //the paramater was invalid.
+                send_snap7_errors(result);
+                return;
+            }
+            send_data_response(&data, 1);
+        break;
+
+        default:
+            send_error_response("einval");
+        break;
+    }
+}
+
+/**
+ *  Reads an internal Client object parameter. (details in pg.)
+*/
+static void handle_set_params(const char *req, int *req_index)
+{   
+    int result;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":open requires a 2-tuple, term_size = %d", term_size);
+
+    char ind_param;
+    if (ei_decode_char(req, req_index, &ind_param) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    int64_t data;
+    if (ei_decode_long(req, req_index, &data) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    switch (ind_param)
+    {
+        case 2: 
+        case 7: 
+        case 8: 
+        case 9:        
+        case 3: 
+        case 4: 
+        case 5: 
+        case 10:
+            result = Cli_SetParam(Client, ind_param, &data);
+            if (result != 0){
+                //the paramater was invalid.
+                send_snap7_errors(result);
+                return;
+            }
+            send_ok_response();
+        break;
+
+        default:
+            send_error_response("einval");
+        break;
+    }
+}
 
 static void handle_test(const char *req, int *req_index)
 {
@@ -341,6 +491,8 @@ static struct request_handler request_handlers[] = {
     {"set_connection_params", handle_set_connection_params},
     {"connect", handle_connect},
     {"disconnect", handle_disconnect},
+    {"get_params", handle_get_params},
+    {"set_params", handle_set_params},
     { NULL, NULL }
 };
 
