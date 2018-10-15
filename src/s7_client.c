@@ -95,7 +95,7 @@ static void send_ok_response()
 /**
  * @brief Send data back to Elixir in form of {:ok, data}
  */
-static void send_data_response(void *data, int data_type)
+static void send_data_response(void *data, int data_type, int data_len)
 {
     char resp[256];
     int resp_index = sizeof(uint16_t); // Space for payload size
@@ -122,8 +122,8 @@ static void send_data_response(void *data, int data_type)
             ei_encode_double(resp, &resp_index, *(double *)data );
         break;
 
-        case 5: //arrays
-            ei_encode_binary(resp, &resp_index, data, sizeof(data));
+        case 5: //arrays (char type)
+            ei_encode_binary(resp, &resp_index, data, data_len);
         break;
 
         default:
@@ -180,7 +180,7 @@ static void send_snap7_errors(uint32_t code)
     
     ei_encode_atom(resp, &resp_index, "eiso");
     if(index_iso != 0)
-        ei_encode_atom(resp, &resp_index, err_s7[index_iso-1]);
+        ei_encode_atom(resp, &resp_index, err_iso[index_iso-1]);
     else
         ei_encode_atom(resp, &resp_index, "nil");
 
@@ -393,7 +393,7 @@ static void handle_get_params(const char *req, int *req_index)
                 send_snap7_errors(result);
                 return;
             }
-            send_data_response(&data, 2);
+            send_data_response(&data, 2, 0);
         break;
         
         case 3: //
@@ -406,7 +406,7 @@ static void handle_get_params(const char *req, int *req_index)
                 send_snap7_errors(result);
                 return;
             }
-            send_data_response(&data, 1);
+            send_data_response(&data, 1, 0);
         break;
 
         default:
@@ -464,8 +464,170 @@ static void handle_set_params(const char *req, int *req_index)
     }
 }
 
+//    Data I/O functions
+
+/**
+ *  This is the main funcion to read from a PLC.
+ *  With it you can read DB, Inputs, Outputs, Merkers, Timers and Counters
+ *  (check pg. 104 for details).
+*/
+static void handle_read_area(const char *req, int *req_index)
+{   
+    char data_len;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 5)
+        errx(EXIT_FAILURE, ":open requires a 5-tuple, term_size = %d", term_size);
+
+    unsigned long area;
+    if (ei_decode_ulong(req, req_index, &area) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long db_number;
+    if (ei_decode_ulong(req, req_index, &db_number) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long amount;
+    if (ei_decode_ulong(req, req_index, &amount) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned long data_type; //wordLen
+    if (ei_decode_ulong(req, req_index, &data_type) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    switch(data_type)
+    {
+        case 0x01:
+        case 0x02:  
+            data_len = 1;
+        break;
+
+        case 0x04: 
+        case 0x1C:
+        case 0x1D:  
+            data_len = 2;
+        break;
+        
+        case 0x06: 
+        case 0x08: 
+            data_len = 4;
+        break;
+    }
+    
+    unsigned char data[data_len*amount];
+    int result = Cli_ReadArea(Client, (int)area, (int)db_number, (int)start, (int)amount, (int)data_type, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_data_response(data, 5, sizeof(data));
+}
+/**
+ *  This is the main functiion to write data into a PLC. It's the 
+ *  complementary function of 'read_area', the parameters and their
+ *  meanings are the same. The only difference is that the data is
+ *  transferred from the buffer pointed by data into the PLC.
+*/
+static void handle_write_area(const char *req, int *req_index)
+{   
+    char data_len;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 6)
+        errx(EXIT_FAILURE, ":open requires a 6-tuple, term_size = %d", term_size);
+
+    unsigned long area;
+    if (ei_decode_ulong(req, req_index, &area) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long db_number;
+    if (ei_decode_ulong(req, req_index, &db_number) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long amount;
+    if (ei_decode_ulong(req, req_index, &amount) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned long data_type; //wordLen
+    if (ei_decode_ulong(req, req_index, &data_type) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    switch(data_type)
+    {
+        case 0x01:
+        case 0x02:  
+            data_len = 1;
+        break;
+
+        case 0x04: 
+        case 0x1C:
+        case 0x1D:  
+            data_len = 2;
+        break;
+        
+        case 0x06: 
+        case 0x08: 
+            data_len = 4;
+        break;
+
+        default:
+            errx(EXIT_FAILURE, "inconsistent data_type = %ld", data_type);
+        break;
+    }
+    
+    unsigned char data[data_len*amount];
+
+    if(ei_decode_binary(req, req_index, data, &term_size) < 0 ||
+        term_size != (data_len*amount))
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*amount), term_size);
+    
+    int result = Cli_WriteArea(Client, (int)area, (int)db_number, (int)start, (int)amount, (int)data_type, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_data_response(data, 5, sizeof(data));
+}
+
+
 static void handle_test(const char *req, int *req_index)
 {
+    // char x[12] = {0x01,0x02,0x03,0x00, 0xff,0x01,0x01,0x02,0x03,0x00, 0xff,0x01};
+    // send_data_response(x, 5, sizeof(x));
     // char resp[256];
     // int16_t binary[]={0x1010, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
     // int resp_index = sizeof(uint16_t); // Space for payload size
@@ -493,6 +655,8 @@ static struct request_handler request_handlers[] = {
     {"disconnect", handle_disconnect},
     {"get_params", handle_get_params},
     {"set_params", handle_set_params},
+    {"read_area", handle_read_area},
+    {"write_area", handle_write_area},
     { NULL, NULL }
 };
 
