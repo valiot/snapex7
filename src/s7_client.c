@@ -247,7 +247,7 @@ static void handle_connect_to(const char *req, int *req_index)
     int term_size;
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 3)
-        errx(EXIT_FAILURE, ":open requires a 3-tuple, term_size = %d", term_size);
+        errx(EXIT_FAILURE, ":connect_to requires a 3-tuple, term_size = %d", term_size);
 
     char ip[20];
     long binary_len;
@@ -297,7 +297,7 @@ static void handle_set_connection_params(const char *req, int *req_index)
     int term_size;
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 3)
-        errx(EXIT_FAILURE, ":open requires a 3-tuple, term_size = %d", term_size);
+        errx(EXIT_FAILURE, ":set_connection_params requires a 3-tuple, term_size = %d", term_size);
 
     char ip[20];
     long binary_len;
@@ -371,7 +371,6 @@ static void handle_disconnect(const char *req, int *req_index)
 */
 static void handle_get_params(const char *req, int *req_index)
 {   
-    
     char ind_param;
     int result;
 
@@ -425,7 +424,7 @@ static void handle_set_params(const char *req, int *req_index)
     int term_size;
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 2)
-        errx(EXIT_FAILURE, ":open requires a 2-tuple, term_size = %d", term_size);
+        errx(EXIT_FAILURE, ":set_params requires a 2-tuple, term_size = %d", term_size);
 
     char ind_param;
     if (ei_decode_char(req, req_index, &ind_param) < 0) {
@@ -478,7 +477,7 @@ static void handle_read_area(const char *req, int *req_index)
     int term_size;
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 5)
-        errx(EXIT_FAILURE, ":open requires a 5-tuple, term_size = %d", term_size);
+        errx(EXIT_FAILURE, ":read_area requires a 5-tuple, term_size = %d", term_size);
 
     unsigned long area;
     if (ei_decode_ulong(req, req_index, &area) < 0) {
@@ -552,7 +551,7 @@ static void handle_write_area(const char *req, int *req_index)
     int term_size;
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
         term_size != 6)
-        errx(EXIT_FAILURE, ":open requires a 6-tuple, term_size = %d", term_size);
+        errx(EXIT_FAILURE, ":write_area requires a 6-tuple, term_size = %d", term_size);
 
     unsigned long area;
     if (ei_decode_ulong(req, req_index, &area) < 0) {
@@ -608,9 +607,9 @@ static void handle_write_area(const char *req, int *req_index)
     }
     
     unsigned char data[data_len*amount];
-
-    if(ei_decode_binary(req, req_index, data, &term_size) < 0 ||
-        term_size != (data_len*amount))
+    long bin_size;
+    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
+        bin_size != (data_len*amount))
         errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*amount), term_size);
     
     int result = Cli_WriteArea(Client, (int)area, (int)db_number, (int)start, (int)amount, (int)data_type, &data);
@@ -620,7 +619,672 @@ static void handle_write_area(const char *req, int *req_index)
         return;
     }
             
+    send_ok_response();
+}
+
+/**
+ *  This is a lean function of Cli_ReadArea() to read PLC's DB.
+ *  It simply internally calls Cli_ReadArea() with
+ *      -   Area = S7AreaDB.
+ *      -   WordLen = S7WLByte.
+*/
+static void handle_db_read(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":db_read requires a 3-tuple, term_size = %d", term_size);
+
+    unsigned long db_number;
+    if (ei_decode_ulong(req, req_index, &db_number) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    int result = Cli_DBRead(Client, (int)db_number, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
     send_data_response(data, 5, sizeof(data));
+}
+
+/**
+ *  This is a lean function of Cli_WriteArea() to read PLC's DB.
+ *  It simply internally calls Cli_WriteArea() with
+ *      -   Area = S7AreaDB.
+ *      -   WordLen = S7WLByte.
+*/
+static void handle_db_write(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 4)
+        errx(EXIT_FAILURE, ":db_write requires a 4-tuple, term_size = %d", term_size);
+
+    unsigned long db_number;
+    if (ei_decode_ulong(req, req_index, &db_number) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    long bin_size;
+    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
+        bin_size != (data_len*size))
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+    
+    int result = Cli_DBWrite(Client, (int)db_number, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_ok_response();
+}
+
+/**
+ *  This is a lean function of Cli_ReadArea() to read PLC's outputs processes.
+ *  It simply internally calls Cli_ReadArea() with
+ *      -   Area = S7AreaPA.
+ *      -   WordLen = S7WLByte.
+*/
+static void handle_ab_read(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":ab_read requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    int result = Cli_ABRead(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_data_response(data, 5, sizeof(data));
+}
+
+/**
+ *  This is a lean function of Cli_WriteArea() to read PLC's outputs processes.
+ *  It simply internally calls Cli_WriteArea() with
+ *      -   Area = S7AreaPA.
+ *      -   WordLen = S7WLByte.
+*/
+static void handle_ab_write(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":ab_write requires a 3-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    long bin_size;
+    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
+        bin_size != (data_len*size))
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+    
+    int result = Cli_ABWrite(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_ok_response();
+}
+
+/**
+ *  This is a lean function of Cli_ReadArea() to read PLC's innuts processes.
+ *  It simply internally calls Cli_ReadArea() with
+ *      -   Area = S7AreaPE.
+ *      -   WordLen = S7WLByte.
+*/
+static void handle_eb_read(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":eb_read requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    int result = Cli_EBRead(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_data_response(data, 5, sizeof(data));
+}
+
+/**
+ *  This is a lean function of Cli_WriteArea() to read PLC's inputs processes.
+ *  It simply internally calls Cli_WriteArea() with
+ *      -   Area = S7AreaPE.
+ *      -   WordLen = S7WLByte.
+*/
+static void handle_eb_write(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":eb_write requires a 3-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    long bin_size;
+    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
+        bin_size != (data_len*size))
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+    
+    int result = Cli_EBWrite(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_ok_response();
+}
+
+/**
+ *  This is a lean function of Cli_ReadArea() to read PLC's Merkers.
+ *  It simply internally calls Cli_ReadArea() with
+ *      -   Area = S7AreaMK.
+ *      -   WordLen = S7WLByte.
+*/
+static void handle_mb_read(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":mb_read requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    int result = Cli_MBRead(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_data_response(data, 5, sizeof(data));
+}
+
+/**
+ *  This is a lean function of Cli_WriteArea() to read PLC's Merkers.
+ *  It simply internally calls Cli_WriteArea() with
+ *      -   Area = S7AreaMK.
+ *      -   WordLen = S7WLByte.
+*/
+static void handle_mb_write(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":mb_write requires a 3-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    long bin_size;
+    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
+        bin_size != (data_len*size))
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+    
+    int result = Cli_MBWrite(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_ok_response();
+}
+
+/**
+ *  This is a lean function of Cli_WriteArea() to read PLC's inputs processes.
+ *  It simply internally calls Cli_WriteArea() with
+ *      -   Area = S7AreaPE.
+ *      -   WordLen = S7WLByte.
+*/
+static void handle_eb_write(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":eb_write requires a 3-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    long bin_size;
+    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
+        bin_size != (data_len*size))
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+    
+    int result = Cli_EBWrite(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_ok_response();
+}
+
+/**
+ *  This is a lean function of Cli_ReadArea() to read PLC's Timers.
+ *  It simply internally calls Cli_ReadArea() with
+ *      -   Area = S7AreaTM.
+ *      -   WordLen = S7WLTimer.
+*/
+static void handle_tm_read(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":tm_read requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    int result = Cli_TMRead(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_data_response(data, 5, sizeof(data));
+}
+
+/**
+ *  This is a lean function of Cli_WriteArea() to read PLC's Timers.
+ *  It simply internally calls Cli_WriteArea() with
+ *      -   Area = S7AreaTM.
+ *      -   WordLen = S7WLTimer.
+*/
+static void handle_tm_write(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":tm_write requires a 3-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    long bin_size;
+    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
+        bin_size != (data_len*size))
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+    
+    int result = Cli_TMWrite(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_ok_response();
+}
+
+/**
+ *  This is a lean function of Cli_WriteArea() to read PLC's inputs processes.
+ *  It simply internally calls Cli_WriteArea() with
+ *      -   Area = S7AreaPE.
+ *      -   WordLen = S7WLByte.
+*/
+static void handle_eb_write(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":eb_write requires a 3-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    long bin_size;
+    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
+        bin_size != (data_len*size))
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+    
+    int result = Cli_EBWrite(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_ok_response();
+}
+
+/**
+ *  This is a lean function of Cli_ReadArea() to read PLC's Merkers.
+ *  It simply internally calls Cli_ReadArea() with
+ *      -   Area = S7AreaMK.
+ *      -   WordLen = S7WLByte.
+*/
+static void handle_mb_read(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":mb_read requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    int result = Cli_MBRead(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_data_response(data, 5, sizeof(data));
+}
+
+/**
+ *  This is a lean function of Cli_WriteArea() to read PLC's Merkers.
+ *  It simply internally calls Cli_WriteArea() with
+ *      -   Area = S7AreaMK.
+ *      -   WordLen = S7WLByte.
+*/
+static void handle_mb_write(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":ct_write requires a 3-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    long bin_size;
+    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
+        bin_size != (data_len*size))
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+    
+    int result = Cli_MBWrite(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_ok_response();
+}
+
+/**
+ *  This is a lean function of Cli_ReadArea() to read PLC's Counters.
+ *  It simply internally calls Cli_ReadArea() with
+ *      -   Area = S7AreaCT.
+ *      -   WordLen = S7WLCounter.
+*/
+static void handle_ct_read(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":ct_read requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    int result = Cli_MBRead(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_data_response(data, 5, sizeof(data));
+}
+
+/**
+ *  This is a lean function of Cli_WriteArea() to read PLC's Counter.
+ *  It simply internally calls Cli_WriteArea() with
+ *      -   Area = S7AreaCT.
+ *      -   WordLen = S7WLCounter.
+*/
+static void handle_ct_write(const char *req, int *req_index)
+{
+    const char data_len = 1;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":ct_write requires a 3-tuple, term_size = %d", term_size);
+
+    unsigned long start;
+    if (ei_decode_ulong(req, req_index, &start) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[data_len*size];
+    long bin_size;
+    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
+        bin_size != (data_len*size))
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+    
+    int result = Cli_CTWrite(Client, (int)start, (int)size, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_ok_response();
 }
 
 
@@ -657,6 +1321,14 @@ static struct request_handler request_handlers[] = {
     {"set_params", handle_set_params},
     {"read_area", handle_read_area},
     {"write_area", handle_write_area},
+    {"db_read", handle_db_read},
+    {"db_write", handle_db_write},
+    {"ab_read", handle_ab_read},
+    {"ab_write", handle_ab_write},
+    {"eb_read", handle_eb_read},
+    {"eb_write", handle_eb_write},
+    {"mb_read", handle_mb_read},
+    {"mb_write", handle_mb_write},
     { NULL, NULL }
 };
 
