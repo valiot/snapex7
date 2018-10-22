@@ -98,6 +98,8 @@ static void send_ok_response()
 static void send_data_response(void *data, int data_type, int data_len)
 {
     char resp[256];
+    byte r_len = 1;
+    long i_struct;
     int resp_index = sizeof(uint16_t); // Space for payload size
     resp[resp_index++] = response_id;
     ei_encode_version(resp, &resp_index);
@@ -124,6 +126,40 @@ static void send_data_response(void *data, int data_type, int data_len)
 
         case 5: //arrays (char type)
             ei_encode_binary(resp, &resp_index, data, data_len);
+        break;
+
+        case 6: //atom
+            ei_encode_atom(resp, &resp_index, data);
+        break;
+
+        case 7: //TS7DataItem
+            ei_encode_list_header(resp, &resp_index, data_len);
+            for(i_struct = 0; i_struct < data_len; i_struct++) 
+            {
+                byte *batch_data = ((TS7DataItem *)data)[i_struct].pdata; 
+                int amount = ((TS7DataItem *)data)[i_struct].Amount;
+                int w_len = ((TS7DataItem *)data)[i_struct].WordLen;
+                switch(w_len)
+                {
+                    case 0x01:
+                    case 0x02:  
+                        r_len = 1;
+                    break;
+
+                    case 0x04: 
+                    case 0x1C:
+                    case 0x1D:  
+                        r_len = 2;
+                    break;
+                    
+                    case 0x06: 
+                    case 0x08: 
+                        r_len = 4;
+                    break;
+                }
+                ei_encode_binary(resp, &resp_index, batch_data, amount*r_len);
+            }
+            ei_encode_empty_list(resp, &resp_index);        
         break;
 
         default:
@@ -959,49 +995,6 @@ static void handle_mb_write(const char *req, int *req_index)
 }
 
 /**
- *  This is a lean function of Cli_WriteArea() to read PLC's inputs processes.
- *  It simply internally calls Cli_WriteArea() with
- *      -   Area = S7AreaPE.
- *      -   WordLen = S7WLByte.
-*/
-static void handle_eb_write(const char *req, int *req_index)
-{
-    const char data_len = 1;
-    int term_type;
-    int term_size;
-    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 3)
-        errx(EXIT_FAILURE, ":eb_write requires a 3-tuple, term_size = %d", term_size);
-
-    unsigned long start;
-    if (ei_decode_ulong(req, req_index, &start) < 0) {
-        send_error_response("einval");
-        return;
-    }
-
-    unsigned long size;
-    if (ei_decode_ulong(req, req_index, &size) < 0) {
-        send_error_response("einval");
-        return;
-    }
-    
-    unsigned char data[data_len*size];
-    long bin_size;
-    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
-        bin_size != (data_len*size))
-        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
-    
-    int result = Cli_EBWrite(Client, (int)start, (int)size, &data);
-    if (result != 0){
-        //the paramater was invalid.
-        send_snap7_errors(result);
-        return;
-    }
-            
-    send_ok_response();
-}
-
-/**
  *  This is a lean function of Cli_ReadArea() to read PLC's Timers.
  *  It simply internally calls Cli_ReadArea() with
  *      -   Area = S7AreaTM.
@@ -1083,130 +1076,6 @@ static void handle_tm_write(const char *req, int *req_index)
 }
 
 /**
- *  This is a lean function of Cli_WriteArea() to read PLC's inputs processes.
- *  It simply internally calls Cli_WriteArea() with
- *      -   Area = S7AreaPE.
- *      -   WordLen = S7WLByte.
-*/
-static void handle_eb_write(const char *req, int *req_index)
-{
-    const char data_len = 1;
-    int term_type;
-    int term_size;
-    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 3)
-        errx(EXIT_FAILURE, ":eb_write requires a 3-tuple, term_size = %d", term_size);
-
-    unsigned long start;
-    if (ei_decode_ulong(req, req_index, &start) < 0) {
-        send_error_response("einval");
-        return;
-    }
-
-    unsigned long size;
-    if (ei_decode_ulong(req, req_index, &size) < 0) {
-        send_error_response("einval");
-        return;
-    }
-    
-    unsigned char data[data_len*size];
-    long bin_size;
-    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
-        bin_size != (data_len*size))
-        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
-    
-    int result = Cli_EBWrite(Client, (int)start, (int)size, &data);
-    if (result != 0){
-        //the paramater was invalid.
-        send_snap7_errors(result);
-        return;
-    }
-            
-    send_ok_response();
-}
-
-/**
- *  This is a lean function of Cli_ReadArea() to read PLC's Merkers.
- *  It simply internally calls Cli_ReadArea() with
- *      -   Area = S7AreaMK.
- *      -   WordLen = S7WLByte.
-*/
-static void handle_mb_read(const char *req, int *req_index)
-{
-    const char data_len = 1;
-    int term_type;
-    int term_size;
-    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 2)
-        errx(EXIT_FAILURE, ":mb_read requires a 2-tuple, term_size = %d", term_size);
-
-    unsigned long start;
-    if (ei_decode_ulong(req, req_index, &start) < 0) {
-        send_error_response("einval");
-        return;
-    }
-
-    unsigned long size;
-    if (ei_decode_ulong(req, req_index, &size) < 0) {
-        send_error_response("einval");
-        return;
-    }
-    
-    unsigned char data[data_len*size];
-    int result = Cli_MBRead(Client, (int)start, (int)size, &data);
-    if (result != 0){
-        //the paramater was invalid.
-        send_snap7_errors(result);
-        return;
-    }
-            
-    send_data_response(data, 5, sizeof(data));
-}
-
-/**
- *  This is a lean function of Cli_WriteArea() to read PLC's Merkers.
- *  It simply internally calls Cli_WriteArea() with
- *      -   Area = S7AreaMK.
- *      -   WordLen = S7WLByte.
-*/
-static void handle_mb_write(const char *req, int *req_index)
-{
-    const char data_len = 1;
-    int term_type;
-    int term_size;
-    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
-        term_size != 3)
-        errx(EXIT_FAILURE, ":ct_write requires a 3-tuple, term_size = %d", term_size);
-
-    unsigned long start;
-    if (ei_decode_ulong(req, req_index, &start) < 0) {
-        send_error_response("einval");
-        return;
-    }
-
-    unsigned long size;
-    if (ei_decode_ulong(req, req_index, &size) < 0) {
-        send_error_response("einval");
-        return;
-    }
-    
-    unsigned char data[data_len*size];
-    long bin_size;
-    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
-        bin_size != (data_len*size))
-        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
-    
-    int result = Cli_MBWrite(Client, (int)start, (int)size, &data);
-    if (result != 0){
-        //the paramater was invalid.
-        send_snap7_errors(result);
-        return;
-    }
-            
-    send_ok_response();
-}
-
-/**
  *  This is a lean function of Cli_ReadArea() to read PLC's Counters.
  *  It simply internally calls Cli_ReadArea() with
  *      -   Area = S7AreaCT.
@@ -1234,7 +1103,7 @@ static void handle_ct_read(const char *req, int *req_index)
     }
     
     unsigned char data[data_len*size];
-    int result = Cli_MBRead(Client, (int)start, (int)size, &data);
+    int result = Cli_CTRead(Client, (int)start, (int)size, &data);
     if (result != 0){
         //the paramater was invalid.
         send_snap7_errors(result);
@@ -1284,20 +1153,262 @@ static void handle_ct_write(const char *req, int *req_index)
         return;
     }
             
-    send_ok_response();
+    send_data_response(data, 5, sizeof(data));
 }
 
+/**
+ *  This is function allows to read different kind of variables from a
+ *  PLC in a single call. With it you can read DB, Inputs, Outputs, Merkers
+ *  Timers and Counters.
+*/
+static void handle_read_multi_vars(const char *req, int *req_index)
+{
+    unsigned long i_struct;
+    int i_key;
+    const unsigned char n_keys = 5;
+    int term_type;
+    int term_size;
+    long bin_size;
+    byte data_len;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":read_multi_vars requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long n_vars;
+    if (ei_decode_ulong(req, req_index, &n_vars) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    if(ei_decode_list_header(req, req_index, &term_size) < 0 || 
+        term_size != n_vars)
+        errx(EXIT_FAILURE, ":read_multi_vars inconsistent argument size n_vars = %ld, n_maps = %d",
+        n_vars, term_size);
+    
+    TS7DataItem Items[n_vars];
+    byte *data_ptrs[n_vars];
+
+    for(i_struct = 0; i_struct < n_vars; i_struct++) 
+    {
+        if(ei_decode_map_header(req, req_index, &term_size) < 0 || 
+        term_size != n_keys)
+        errx(EXIT_FAILURE, ":read_multi_vars inconsistent argument size n_keys = %d, arity = %d",
+        n_keys, term_size);
+        
+        for(i_key = 0; i_key < n_keys; i_key++)
+        {
+            char atom[10];
+            if (ei_decode_atom(req, req_index, atom) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            
+            unsigned long value;
+            if (ei_decode_ulong(req, req_index, &value) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            
+            if(!strcmp(atom, "amount"))
+                Items[i_struct].Amount = (int)value;            
+            else if(!strcmp(atom, "wordlen"))
+            {
+                Items[i_struct].WordLen = (int)value;
+                switch(value)
+                {
+                    case 0x01:
+                    case 0x02:  
+                        data_len = 1;
+                    break;
+
+                    case 0x04: 
+                    case 0x1C:
+                    case 0x1D:  
+                        data_len = 2;
+                    break;
+                    
+                    case 0x06: 
+                    case 0x08: 
+                        data_len = 4;
+                    break;
+
+                    default:
+                        errx(EXIT_FAILURE, "inconsistent data_type = %ld", value);
+                    break;
+                }
+            }
+            else if(!strcmp(atom, "dbnumber")) 
+                Items[i_struct].DBNumber = (int)value;
+            else if(!strcmp(atom, "start")) 
+                Items[i_struct].Start = (int)value;
+            else if(!strcmp(atom, "area")) 
+                Items[i_struct].Area = (int)value;
+            else
+                errx(EXIT_FAILURE, ":read_multi_vars invalid");            
+        } 
+        data_ptrs[i_struct] = (byte *) malloc(Items[i_struct].Amount*data_len);
+        Items[i_struct].pdata = data_ptrs[i_struct];
+    }
+    //errx(EXIT_FAILURE, ":read_multi_vars invalid %d", 232);            
+    int result = Cli_ReadMultiVars(Client, &Items[0], n_vars);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        for(i_struct = 0; i_struct < n_vars; i_struct++) 
+            free(data_ptrs[i_struct]);
+        return;
+    }    
+                
+    send_data_response(&Items, 7, n_vars);
+    for(i_struct = 0; i_struct < n_vars; i_struct++) 
+        free(data_ptrs[i_struct]);
+}
+
+/**
+ *  This is function allows to write different kind of variables from a
+ *  PLC in a single call. With it you can read DB, Inputs, Outputs, Merkers
+ *  Timers and Counters.
+*/
+static void handle_write_multi_vars(const char *req, int *req_index)
+{
+    unsigned long i_struct;
+    int i_key;
+    const unsigned char n_keys = 6;
+    int term_type;
+    int term_size;
+    long bin_size;
+    unsigned long value;
+    unsigned char data_len;
+    unsigned char tmp_ind;
+    byte data[256];
+
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":write_multi_vars requires a 2-tuple, term_size = %d", term_size);
+
+    unsigned long n_vars;
+    if (ei_decode_ulong(req, req_index, &n_vars) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    if(ei_decode_list_header(req, req_index, &term_size) < 0 || 
+        term_size != n_vars)
+        errx(EXIT_FAILURE, ":write_multi_vars inconsistent argument size n_vars = %ld, n_maps = %d",
+        n_vars, term_size);
+    
+    TS7DataItem Items[n_vars];
+    byte *data_ptrs[n_vars];
+
+    for(i_struct = 0; i_struct < n_vars; i_struct++) 
+    {
+        if(ei_decode_map_header(req, req_index, &term_size) < 0 || 
+        term_size != n_keys)
+        errx(EXIT_FAILURE, ":write_multi_vars inconsistent argument size n_keys = %d, arity = %d",
+        n_keys, term_size);
+        
+        for(i_key = 0; i_key < n_keys; i_key++)
+        {
+            char atom[10];
+            if (ei_decode_atom(req, req_index, atom) < 0) {
+                send_error_response("einval");
+                return;
+            }
+            //send_data_response(atom, 6, 2);
+            if(!strcmp(atom, "pdata")) 
+            {
+                if(ei_decode_binary(req, req_index, data, &bin_size) < 0)
+                {
+                    send_error_response("einval_g");
+                    return;
+                }
+            }
+            else
+            {
+                if (ei_decode_ulong(req, req_index, &value) < 0) {
+                    send_error_response("einval_2");
+                    return;
+                }
+            }
+            if(!strcmp(atom, "amount"))
+                Items[i_struct].Amount = (int)value;            
+            else if(!strcmp(atom, "wordlen"))
+            { 
+                Items[i_struct].WordLen = (int)value;
+                switch(value)
+                {
+                    case 0x01:
+                    case 0x02:  
+                        data_len = 1;
+                    break;
+
+                    case 0x04: 
+                    case 0x1C:
+                    case 0x1D:  
+                        data_len = 2;
+                    break;
+                    
+                    case 0x06: 
+                    case 0x08: 
+                        data_len = 4;
+                    break;
+
+                    default:
+                        errx(EXIT_FAILURE, "write_multi_vars inconsistent data_type = %ld", value);
+                    break;
+                }
+            }
+            else if(!strcmp(atom, "dbnumber")) 
+                Items[i_struct].DBNumber = (int)value;
+            else if(!strcmp(atom, "start")) 
+                Items[i_struct].Start = (int)value;
+            else if(!strcmp(atom, "area")) 
+                Items[i_struct].Area = (int)value;      
+        } 
+        
+        if(bin_size != (Items[i_struct].Amount*data_len))
+            errx(EXIT_FAILURE, ":write_multi_vars binary inconsistent, expected size = %d, real = %ld",
+            (Items[i_struct].Amount*data_len), bin_size); 
+
+        data_ptrs[i_struct] = (byte *) malloc(Items[i_struct].Amount*data_len);
+        
+        for(tmp_ind=0; tmp_ind < Items[i_struct].Amount*data_len; tmp_ind ++)
+            data_ptrs[i_struct][tmp_ind] = data[tmp_ind];
+        
+        Items[i_struct].pdata = data_ptrs[i_struct];
+    }
+    
+    int result = Cli_WriteMultiVars(Client, &Items[0], n_vars);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        for(i_struct = 0; i_struct < n_vars; i_struct++) 
+           free(data_ptrs[i_struct]);
+        return;
+    }    
+    //leer los valores....       
+    send_ok_response();
+    for(i_struct = 0; i_struct < n_vars; i_struct++) 
+        free(data_ptrs[i_struct]);
+}
 
 static void handle_test(const char *req, int *req_index)
 {
-    // char x[12] = {0x01,0x02,0x03,0x00, 0xff,0x01,0x01,0x02,0x03,0x00, 0xff,0x01};
-    // send_data_response(x, 5, sizeof(x));
     // char resp[256];
-    // int16_t binary[]={0x1010, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F};
     // int resp_index = sizeof(uint16_t); // Space for payload size
     // resp[resp_index++] = response_id;
     // ei_encode_version(resp, &resp_index);
-    // ei_encode_binary(resp, &resp_index, binary, 18);
+    // ei_encode_list_header(resp, &resp_index, 1);
+    // ei_encode_tuple_header(resp, &resp_index, 2);
+    // ei_encode_char(resp, &resp_index, 'c');
+    // ei_encode_char(resp, &resp_index, 'c');
+    // ei_encode_empty_list(resp, &resp_index);
+    // //ei_encode_tuple_header(resp, &resp_index, 2);
+    // //ei_encode_atom(resp, &resp_index, "ok");
+    // //ei_encode_list_header(resp, &resp_index, 1);
+    // //ei_encode_atom(resp, &resp_index, "ok");
+    // //ei_encode_atom(resp, &resp_index, "ok");
+    // //ei_encode_atom(resp, &resp_index, "ok");
     // erlcmd_send(resp, resp_index);
     send_ok_response();
 }
@@ -1329,6 +1440,12 @@ static struct request_handler request_handlers[] = {
     {"eb_write", handle_eb_write},
     {"mb_read", handle_mb_read},
     {"mb_write", handle_mb_write},
+    {"tm_read", handle_tm_read},
+    {"tm_write", handle_tm_write},
+    {"ct_read", handle_ct_read},
+    {"ct_write", handle_ct_write},
+    {"read_multi_vars", handle_read_multi_vars},
+    {"write_multi_vars", handle_write_multi_vars},
     { NULL, NULL }
 };
 
