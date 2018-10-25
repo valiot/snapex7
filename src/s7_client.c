@@ -105,7 +105,7 @@ static void send_data_response(void *data, int data_type, int data_len)
     ei_encode_version(resp, &resp_index);
     ei_encode_tuple_header(resp, &resp_index, 2);
     ei_encode_atom(resp, &resp_index, "ok");
-    
+
     switch(data_type)
     {
         case 1: //signed (long)
@@ -124,7 +124,7 @@ static void send_data_response(void *data, int data_type, int data_len)
             ei_encode_double(resp, &resp_index, *(double *)data );
         break;
 
-        case 5: //arrays (char type)
+        case 5: //arrays (byte type)
             ei_encode_binary(resp, &resp_index, data, data_len);
         break;
 
@@ -158,6 +158,16 @@ static void send_data_response(void *data, int data_type, int data_len)
                     break;
                 }
                 ei_encode_binary(resp, &resp_index, batch_data, amount*r_len);
+            }
+            ei_encode_empty_list(resp, &resp_index);        
+        break;
+
+        case 8: // array ulongs
+            ei_encode_list_header(resp, &resp_index, data_len);
+            for(i_struct = 0; i_struct < data_len; i_struct++) 
+            {
+               ei_encode_ulong(resp, &resp_index, *(uint16_t *)data);
+               data+=2;
             }
             ei_encode_empty_list(resp, &resp_index);        
         break;
@@ -1377,7 +1387,7 @@ static void handle_write_multi_vars(const char *req, int *req_index)
         
         Items[i_struct].pdata = data_ptrs[i_struct];
     }
-    
+
     int result = Cli_WriteMultiVars(Client, &Items[0], n_vars);
     if (result != 0){
         //the paramater was invalid.
@@ -1386,31 +1396,338 @@ static void handle_write_multi_vars(const char *req, int *req_index)
            free(data_ptrs[i_struct]);
         return;
     }    
-    //leer los valores....       
     send_ok_response();
     for(i_struct = 0; i_struct < n_vars; i_struct++) 
         free(data_ptrs[i_struct]);
 }
 
+// Directory functions
+
+/**
+ *  This function returns the AG blocks amount divided by type
+*/
+static void handle_list_blocks(const char *req, int *req_index)
+{
+    const byte data_len = 7;
+    TS7BlocksList List;
+    int result = Cli_ListBlocks(Client, &List);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    
+    char resp[256];
+    long i_struct;
+    int resp_index = sizeof(uint16_t); // Space for payload size
+    resp[resp_index++] = response_id;
+    ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "ok");
+
+    ei_encode_list_header(resp, &resp_index, data_len);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp,&resp_index, "OBCount");
+    ei_encode_long(resp, &resp_index, List.OBCount);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp,&resp_index, "FBCount");
+    ei_encode_long(resp, &resp_index, List.FBCount);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp,&resp_index, "FCCount");
+    ei_encode_long(resp, &resp_index, List.FCCount);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp,&resp_index, "SFBCount");
+    ei_encode_long(resp, &resp_index, List.SFBCount);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp,&resp_index, "SFCCount");
+    ei_encode_long(resp, &resp_index, List.SFCCount);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp,&resp_index, "DBCount");
+    ei_encode_long(resp, &resp_index, List.DBCount);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp,&resp_index, "SDBCount");
+    ei_encode_long(resp, &resp_index, List.SDBCount);
+
+    ei_encode_empty_list(resp, &resp_index);
+
+    erlcmd_send(resp, resp_index);
+}
+
+/**
+ *  This function returns the AG list of a specified block type. 
+ *  (Not sure the datatype of data)
+*/
+static void handle_list_blocks_of_type(const char *req, int *req_index)
+{
+    
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":list_blocks_of_type requires a 2-tuple, term_size = %d", term_size);
+    
+    unsigned long block_type;
+    if (ei_decode_ulong(req, req_index, &block_type) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned long n_items;
+    if (ei_decode_ulong(req, req_index, &n_items) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    int items_count = (int) n_items;    //check for a better way of casting...
+    short unsigned int data[items_count];
+    int result = Cli_ListBlocksOfType(Client, (int)block_type, &data, &items_count);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    send_data_response(data, 8, items_count);
+}
+
+/**
+ *  Return detail information about an AG given block.
+ * 
+ *  This function is very useful if you nead to read or write data in a DB 
+ *  which you do not know the size in advance (see pg 127).
+ * 
+ *  This function is used internally by Cli_DBGet().
+*/
+static void handle_get_ag_block_info(const char *req, int *req_index)
+{
+    const byte data_len = 15;
+
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":get_ag_block_info requires a 2-tuple, term_size = %d", term_size);
+    
+    unsigned long block_type;
+    if (ei_decode_ulong(req, req_index, &block_type) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned long block_num;
+    if (ei_decode_ulong(req, req_index, &block_num) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    TS7BlockInfo block_ag_info;
+    int result = Cli_GetAgBlockInfo(Client, (int)block_type, (int)block_num, &block_ag_info);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    //send TS7BlockInfo
+    char resp[256];
+    long i_struct;
+    int resp_index = sizeof(uint16_t); // Space for payload size
+    resp[resp_index++] = response_id;
+    ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "ok");
+
+    ei_encode_list_header(resp, &resp_index, data_len);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "BlkType");
+    ei_encode_long(resp, &resp_index, block_ag_info.BlkType);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "BlkNumber");
+    ei_encode_long(resp, &resp_index, block_ag_info.BlkNumber);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "BlkLang");
+    ei_encode_long(resp, &resp_index, block_ag_info.BlkLang);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "BlkFlags");
+    ei_encode_long(resp, &resp_index, block_ag_info.BlkFlags);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "MC7Size");
+    ei_encode_long(resp, &resp_index, block_ag_info.MC7Size);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "LoadSize");
+    ei_encode_long(resp, &resp_index, block_ag_info.LoadSize);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "LocalData");
+    ei_encode_long(resp, &resp_index, block_ag_info.LocalData);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "SBBLength");
+    ei_encode_long(resp, &resp_index, block_ag_info.SBBLength);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "CheckSum");
+    ei_encode_long(resp, &resp_index, block_ag_info.CheckSum);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "Version");
+    ei_encode_long(resp, &resp_index, block_ag_info.Version);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "CodeDate");
+    ei_encode_binary(resp, &resp_index, block_ag_info.CodeDate, 11);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "IntfDate");
+    ei_encode_binary(resp, &resp_index, block_ag_info.IntfDate, 11);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "Author");
+    ei_encode_binary(resp, &resp_index, block_ag_info.Author, 9);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "Family");
+    ei_encode_binary(resp, &resp_index, &block_ag_info.Family, 9);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "Header");
+    ei_encode_binary(resp, &resp_index, block_ag_info.Header, 9);
+
+    ei_encode_empty_list(resp, &resp_index);
+
+    erlcmd_send(resp, resp_index);
+}
+
+/**
+ *  Return detailed information about a block present in a user buffer.
+ *  This function is usually used in conjunction with Cli_FullUpload().
+ * 
+ *  An uploaded a block saved to disk, could be loaded in a user buffer
+ *  and checked with this function. 
+*/
+static void handle_get_pg_block_info(const char *req, int *req_index)
+{
+    const byte data_len = 15;
+
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":get_pg_block_info requires a 2-tuple, term_size = %d", term_size);
+    
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    byte data[size];
+    long bin_size;
+    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
+        bin_size != size)
+        errx(EXIT_FAILURE, ":get_pg_block_info binary inconsistent, expected size = %ld, real = %d",
+         size, term_size);
+
+    TS7BlockInfo block_ag_info;
+    int result = Cli_GetPgBlockInfo(Client, &data, &block_ag_info, (int)size);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    //send TS7BlockInfo
+    char resp[256];
+    long i_struct;
+    int resp_index = sizeof(uint16_t); // Space for payload size
+    resp[resp_index++] = response_id;
+    ei_encode_version(resp, &resp_index);
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "ok");
+
+    ei_encode_list_header(resp, &resp_index, data_len);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "BlkType");
+    ei_encode_long(resp, &resp_index, block_ag_info.BlkType);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "BlkNumber");
+    ei_encode_long(resp, &resp_index, block_ag_info.BlkNumber);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "BlkLang");
+    ei_encode_long(resp, &resp_index, block_ag_info.BlkLang);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "BlkFlags");
+    ei_encode_long(resp, &resp_index, block_ag_info.BlkFlags);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "MC7Size");
+    ei_encode_long(resp, &resp_index, block_ag_info.MC7Size);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "LoadSize");
+    ei_encode_long(resp, &resp_index, block_ag_info.LoadSize);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "LocalData");
+    ei_encode_long(resp, &resp_index, block_ag_info.LocalData);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "SBBLength");
+    ei_encode_long(resp, &resp_index, block_ag_info.SBBLength);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "CheckSum");
+    ei_encode_long(resp, &resp_index, block_ag_info.CheckSum);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "Version");
+    ei_encode_long(resp, &resp_index, block_ag_info.Version);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "CodeDate");
+    ei_encode_binary(resp, &resp_index, block_ag_info.CodeDate, 11);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "IntfDate");
+    ei_encode_binary(resp, &resp_index, block_ag_info.IntfDate, 11);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "Author");
+    ei_encode_binary(resp, &resp_index, block_ag_info.Author, 9);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "Family");
+    ei_encode_binary(resp, &resp_index, &block_ag_info.Family, 9);
+
+    ei_encode_tuple_header(resp, &resp_index, 2);
+    ei_encode_atom(resp, &resp_index, "Header");
+    ei_encode_binary(resp, &resp_index, block_ag_info.Header, 9);
+
+    ei_encode_empty_list(resp, &resp_index);
+
+    erlcmd_send(resp, resp_index);
+}
+
 static void handle_test(const char *req, int *req_index)
 {
-    // char resp[256];
-    // int resp_index = sizeof(uint16_t); // Space for payload size
-    // resp[resp_index++] = response_id;
-    // ei_encode_version(resp, &resp_index);
-    // ei_encode_list_header(resp, &resp_index, 1);
-    // ei_encode_tuple_header(resp, &resp_index, 2);
-    // ei_encode_char(resp, &resp_index, 'c');
-    // ei_encode_char(resp, &resp_index, 'c');
-    // ei_encode_empty_list(resp, &resp_index);
-    // //ei_encode_tuple_header(resp, &resp_index, 2);
-    // //ei_encode_atom(resp, &resp_index, "ok");
-    // //ei_encode_list_header(resp, &resp_index, 1);
-    // //ei_encode_atom(resp, &resp_index, "ok");
-    // //ei_encode_atom(resp, &resp_index, "ok");
-    // //ei_encode_atom(resp, &resp_index, "ok");
-    // erlcmd_send(resp, resp_index);
-    send_ok_response();
+    uint16_t data[3]={234,230,235};
+    send_data_response(data, 8, 3);
+    send_ok_response();    
 }
 
 /* Elixir request handler table
@@ -1446,6 +1763,10 @@ static struct request_handler request_handlers[] = {
     {"ct_write", handle_ct_write},
     {"read_multi_vars", handle_read_multi_vars},
     {"write_multi_vars", handle_write_multi_vars},
+    {"list_blocks", handle_list_blocks},
+    {"list_blocks_of_type", handle_list_blocks_of_type},
+    {"get_ag_block_info",handle_get_ag_block_info},
+    {"get_pg_block_info",handle_get_pg_block_info},
     { NULL, NULL }
 };
 
