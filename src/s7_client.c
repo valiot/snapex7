@@ -172,6 +172,106 @@ static void send_data_response(void *data, int data_type, int data_len)
             ei_encode_empty_list(resp, &resp_index);        
         break;
 
+        case 9: // TS7BlocksList
+            ei_encode_list_header(resp, &resp_index, data_len);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp,&resp_index, "OBCount");
+            ei_encode_long(resp, &resp_index, ((TS7BlocksList *)data)->OBCount);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp,&resp_index, "FBCount");
+            ei_encode_long(resp, &resp_index, ((TS7BlocksList *)data)->FBCount);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp,&resp_index, "FCCount");
+            ei_encode_long(resp, &resp_index, ((TS7BlocksList *)data)->FCCount);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp,&resp_index, "SFBCount");
+            ei_encode_long(resp, &resp_index, ((TS7BlocksList *)data)->SFBCount);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp,&resp_index, "SFCCount");
+            ei_encode_long(resp, &resp_index, ((TS7BlocksList *)data)->SFCCount);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp,&resp_index, "DBCount");
+            ei_encode_long(resp, &resp_index, ((TS7BlocksList *)data)->DBCount);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp,&resp_index, "SDBCount");
+            ei_encode_long(resp, &resp_index, ((TS7BlocksList *)data)->SDBCount);
+
+            ei_encode_empty_list(resp, &resp_index);     
+        break;
+
+        case 10: //TS7BlockInfo
+            ei_encode_list_header(resp, &resp_index, data_len);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "BlkType");
+            ei_encode_long(resp, &resp_index, ((TS7BlockInfo *)data)->BlkType);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "BlkNumber");
+            ei_encode_long(resp, &resp_index, ((TS7BlockInfo *)data)->BlkNumber);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "BlkLang");
+            ei_encode_long(resp, &resp_index, ((TS7BlockInfo *)data)->BlkLang);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "BlkFlags");
+            ei_encode_long(resp, &resp_index, ((TS7BlockInfo *)data)->BlkFlags);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "MC7Size");
+            ei_encode_long(resp, &resp_index, ((TS7BlockInfo *)data)->MC7Size);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "LoadSize");
+            ei_encode_long(resp, &resp_index, ((TS7BlockInfo *)data)->LoadSize);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "LocalData");
+            ei_encode_long(resp, &resp_index, ((TS7BlockInfo *)data)->LocalData);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "SBBLength");
+            ei_encode_long(resp, &resp_index, ((TS7BlockInfo *)data)->SBBLength);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "CheckSum");
+            ei_encode_long(resp, &resp_index, ((TS7BlockInfo *)data)->CheckSum);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "Version");
+            ei_encode_long(resp, &resp_index, ((TS7BlockInfo *)data)->Version);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "CodeDate");
+            ei_encode_binary(resp, &resp_index, ((TS7BlockInfo *)data)->CodeDate, 11);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "IntfDate");
+            ei_encode_binary(resp, &resp_index, ((TS7BlockInfo *)data)->IntfDate, 11);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "Author");
+            ei_encode_binary(resp, &resp_index, ((TS7BlockInfo *)data)->Author, 9);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "Family");
+            ei_encode_binary(resp, &resp_index, ((TS7BlockInfo *)data)->Family, 9);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "Header");
+            ei_encode_binary(resp, &resp_index, ((TS7BlockInfo *)data)->Header, 9);
+
+            ei_encode_empty_list(resp, &resp_index);
+        break;
+
         default:
             errx(EXIT_FAILURE, "data_type error");
         break;
@@ -1416,48 +1516,9 @@ static void handle_list_blocks(const char *req, int *req_index)
         send_snap7_errors(result);
         return;
     }
-    
-    char resp[256];
-    long i_struct;
-    int resp_index = sizeof(uint16_t); // Space for payload size
-    resp[resp_index++] = response_id;
-    ei_encode_version(resp, &resp_index);
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "ok");
 
-    ei_encode_list_header(resp, &resp_index, data_len);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp,&resp_index, "OBCount");
-    ei_encode_long(resp, &resp_index, List.OBCount);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp,&resp_index, "FBCount");
-    ei_encode_long(resp, &resp_index, List.FBCount);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp,&resp_index, "FCCount");
-    ei_encode_long(resp, &resp_index, List.FCCount);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp,&resp_index, "SFBCount");
-    ei_encode_long(resp, &resp_index, List.SFBCount);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp,&resp_index, "SFCCount");
-    ei_encode_long(resp, &resp_index, List.SFCCount);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp,&resp_index, "DBCount");
-    ei_encode_long(resp, &resp_index, List.DBCount);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp,&resp_index, "SDBCount");
-    ei_encode_long(resp, &resp_index, List.SDBCount);
-
-    ei_encode_empty_list(resp, &resp_index);
-
-    erlcmd_send(resp, resp_index);
+    //send TS7BlocksOfType
+    send_data_response(&List, 9, data_len);
 }
 
 /**
@@ -1492,6 +1553,8 @@ static void handle_list_blocks_of_type(const char *req, int *req_index)
         send_snap7_errors(result);
         return;
     }
+    
+    //send TS7BlocksOfType
     send_data_response(data, 8, items_count);
 }
 
@@ -1534,79 +1597,7 @@ static void handle_get_ag_block_info(const char *req, int *req_index)
     }
 
     //send TS7BlockInfo
-    char resp[256];
-    long i_struct;
-    int resp_index = sizeof(uint16_t); // Space for payload size
-    resp[resp_index++] = response_id;
-    ei_encode_version(resp, &resp_index);
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "ok");
-
-    ei_encode_list_header(resp, &resp_index, data_len);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "BlkType");
-    ei_encode_long(resp, &resp_index, block_ag_info.BlkType);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "BlkNumber");
-    ei_encode_long(resp, &resp_index, block_ag_info.BlkNumber);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "BlkLang");
-    ei_encode_long(resp, &resp_index, block_ag_info.BlkLang);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "BlkFlags");
-    ei_encode_long(resp, &resp_index, block_ag_info.BlkFlags);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "MC7Size");
-    ei_encode_long(resp, &resp_index, block_ag_info.MC7Size);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "LoadSize");
-    ei_encode_long(resp, &resp_index, block_ag_info.LoadSize);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "LocalData");
-    ei_encode_long(resp, &resp_index, block_ag_info.LocalData);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "SBBLength");
-    ei_encode_long(resp, &resp_index, block_ag_info.SBBLength);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "CheckSum");
-    ei_encode_long(resp, &resp_index, block_ag_info.CheckSum);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "Version");
-    ei_encode_long(resp, &resp_index, block_ag_info.Version);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "CodeDate");
-    ei_encode_binary(resp, &resp_index, block_ag_info.CodeDate, 11);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "IntfDate");
-    ei_encode_binary(resp, &resp_index, block_ag_info.IntfDate, 11);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "Author");
-    ei_encode_binary(resp, &resp_index, block_ag_info.Author, 9);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "Family");
-    ei_encode_binary(resp, &resp_index, &block_ag_info.Family, 9);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "Header");
-    ei_encode_binary(resp, &resp_index, block_ag_info.Header, 9);
-
-    ei_encode_empty_list(resp, &resp_index);
-
-    erlcmd_send(resp, resp_index);
+    send_data_response(&block_ag_info, 10, data_len);
 }
 
 /**
@@ -1648,79 +1639,7 @@ static void handle_get_pg_block_info(const char *req, int *req_index)
     }
 
     //send TS7BlockInfo
-    char resp[256];
-    long i_struct;
-    int resp_index = sizeof(uint16_t); // Space for payload size
-    resp[resp_index++] = response_id;
-    ei_encode_version(resp, &resp_index);
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "ok");
-
-    ei_encode_list_header(resp, &resp_index, data_len);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "BlkType");
-    ei_encode_long(resp, &resp_index, block_ag_info.BlkType);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "BlkNumber");
-    ei_encode_long(resp, &resp_index, block_ag_info.BlkNumber);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "BlkLang");
-    ei_encode_long(resp, &resp_index, block_ag_info.BlkLang);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "BlkFlags");
-    ei_encode_long(resp, &resp_index, block_ag_info.BlkFlags);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "MC7Size");
-    ei_encode_long(resp, &resp_index, block_ag_info.MC7Size);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "LoadSize");
-    ei_encode_long(resp, &resp_index, block_ag_info.LoadSize);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "LocalData");
-    ei_encode_long(resp, &resp_index, block_ag_info.LocalData);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "SBBLength");
-    ei_encode_long(resp, &resp_index, block_ag_info.SBBLength);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "CheckSum");
-    ei_encode_long(resp, &resp_index, block_ag_info.CheckSum);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "Version");
-    ei_encode_long(resp, &resp_index, block_ag_info.Version);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "CodeDate");
-    ei_encode_binary(resp, &resp_index, block_ag_info.CodeDate, 11);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "IntfDate");
-    ei_encode_binary(resp, &resp_index, block_ag_info.IntfDate, 11);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "Author");
-    ei_encode_binary(resp, &resp_index, block_ag_info.Author, 9);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "Family");
-    ei_encode_binary(resp, &resp_index, &block_ag_info.Family, 9);
-
-    ei_encode_tuple_header(resp, &resp_index, 2);
-    ei_encode_atom(resp, &resp_index, "Header");
-    ei_encode_binary(resp, &resp_index, block_ag_info.Header, 9);
-
-    ei_encode_empty_list(resp, &resp_index);
-
-    erlcmd_send(resp, resp_index);
+    send_data_response(&block_ag_info, 10, data_len);
 }
 
 static void handle_test(const char *req, int *req_index)
