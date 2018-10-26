@@ -756,7 +756,7 @@ static void handle_write_area(const char *req, int *req_index)
     long bin_size;
     if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
         bin_size != (data_len*amount))
-        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*amount), term_size);
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %ld", (data_len*amount), bin_size);
     
     int result = Cli_WriteArea(Client, (int)area, (int)db_number, (int)start, (int)amount, (int)data_type, &data);
     if (result != 0){
@@ -849,7 +849,7 @@ static void handle_db_write(const char *req, int *req_index)
     long bin_size;
     if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
         bin_size != (data_len*size))
-        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %ld", (data_len*size), bin_size);
     
     int result = Cli_DBWrite(Client, (int)db_number, (int)start, (int)size, &data);
     if (result != 0){
@@ -930,7 +930,7 @@ static void handle_ab_write(const char *req, int *req_index)
     long bin_size;
     if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
         bin_size != (data_len*size))
-        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %ld", (data_len*size), bin_size);
     
     int result = Cli_ABWrite(Client, (int)start, (int)size, &data);
     if (result != 0){
@@ -1011,7 +1011,7 @@ static void handle_eb_write(const char *req, int *req_index)
     long bin_size;
     if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
         bin_size != (data_len*size))
-        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %ld", (data_len*size), bin_size);
     
     int result = Cli_EBWrite(Client, (int)start, (int)size, &data);
     if (result != 0){
@@ -1092,7 +1092,7 @@ static void handle_mb_write(const char *req, int *req_index)
     long bin_size;
     if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
         bin_size != (data_len*size))
-        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %ld", (data_len*size), bin_size);
     
     int result = Cli_MBWrite(Client, (int)start, (int)size, &data);
     if (result != 0){
@@ -1173,7 +1173,7 @@ static void handle_tm_write(const char *req, int *req_index)
     long bin_size;
     if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
         bin_size != (data_len*size))
-        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %ld", (data_len*size), bin_size);
     
     int result = Cli_TMWrite(Client, (int)start, (int)size, &data);
     if (result != 0){
@@ -1254,7 +1254,7 @@ static void handle_ct_write(const char *req, int *req_index)
     long bin_size;
     if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
         bin_size != (data_len*size))
-        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %d", (data_len*size), term_size);
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %ld", (data_len*size), bin_size);
     
     int result = Cli_CTWrite(Client, (int)start, (int)size, &data);
     if (result != 0){
@@ -1508,7 +1508,7 @@ static void handle_write_multi_vars(const char *req, int *req_index)
 */
 static void handle_list_blocks(const char *req, int *req_index)
 {
-    const byte data_len = 7;
+    const byte data_len = 7; //n items in TS7BlocksOfType struct
     TS7BlocksList List;
     int result = Cli_ListBlocks(Client, &List);
     if (result != 0){
@@ -1526,8 +1526,7 @@ static void handle_list_blocks(const char *req, int *req_index)
  *  (Not sure the datatype of data)
 */
 static void handle_list_blocks_of_type(const char *req, int *req_index)
-{
-    
+{    
     int term_type;
     int term_size;
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
@@ -1609,7 +1608,7 @@ static void handle_get_ag_block_info(const char *req, int *req_index)
 */
 static void handle_get_pg_block_info(const char *req, int *req_index)
 {
-    const byte data_len = 15;
+    const byte data_len = 15;   //items in the TS7BlockInfo struct
 
     int term_type;
     int term_size;
@@ -1627,8 +1626,8 @@ static void handle_get_pg_block_info(const char *req, int *req_index)
     long bin_size;
     if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
         bin_size != size)
-        errx(EXIT_FAILURE, ":get_pg_block_info binary inconsistent, expected size = %ld, real = %d",
-         size, term_size);
+        errx(EXIT_FAILURE, ":get_pg_block_info binary inconsistent, expected size = %ld, real = %ld",
+         size, bin_size);
 
     TS7BlockInfo block_ag_info;
     int result = Cli_GetPgBlockInfo(Client, &data, &block_ag_info, (int)size);
@@ -1640,6 +1639,240 @@ static void handle_get_pg_block_info(const char *req, int *req_index)
 
     //send TS7BlockInfo
     send_data_response(&block_ag_info, 10, data_len);
+}
+
+//    Block oriented functions
+
+/**
+ *  Uploads a block from AG. (gets a block from PLC)
+ *  The whole block (including header and footer) is copied into the user buffer.
+*/
+static void handle_full_upload(const char *req, int *req_index)
+{
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":full_upload requires a 3-tuple, term_size = %d", term_size);
+
+    unsigned long block_type;
+    if (ei_decode_ulong(req, req_index, &block_type) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned long block_num;
+    if (ei_decode_ulong(req, req_index, &block_num) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    byte data[size];
+    int length = (int)size;    //check for a better way of casting...
+    int result = Cli_FullUpload(Client, (int)block_type, (int)block_num, &data, &length);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    
+    send_data_response(data, 5, (int)size);
+}
+
+/**
+ *  Uploads a block body from AG. (gets a block from PLC)
+ *  The whole block body (including header and footer) is copied into the user buffer.
+*/
+static void handle_upload(const char *req, int *req_index)
+{
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":upload requires a 3-tuple, term_size = %d", term_size);
+
+    unsigned long block_type;
+    if (ei_decode_ulong(req, req_index, &block_type) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned long block_num;
+    if (ei_decode_ulong(req, req_index, &block_num) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    byte data[size];
+    int length = (int)size;    //check for a better way of casting...
+    int result = Cli_Upload(Client, (int)block_type, (int)block_num, &data, &length);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    
+    send_data_response(data, 5, (int)size);
+}
+
+/**
+ *  Download block from AG. (gets a block to the  PLC)
+ *  The whole block body (including header and footer) must be available into the user buffer.
+*/
+static void handle_download(const char *req, int *req_index)
+{
+    char data_len;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 3)
+        errx(EXIT_FAILURE, ":download requires a 3-tuple, term_size = %d", term_size);
+    
+    unsigned long block_num;
+    if (ei_decode_ulong(req, req_index, &block_num) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    byte data[size];
+    long bin_size;
+    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
+        bin_size != size)
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %ld", size, bin_size);
+
+    int result = Cli_Download(Client, (int)block_num, &data, (int)size);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    
+    send_ok_response();
+}
+
+/**
+ *  Deletes block into AG.
+ *  (There is an undo function available).
+*/
+static void handle_delete(const char *req, int *req_index)
+{
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":delete requires a 2-tuple, term_size = %d", term_size);
+    
+    unsigned long block_type;
+    if (ei_decode_ulong(req, req_index, &block_type) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned long block_num;
+    if (ei_decode_ulong(req, req_index, &block_num) < 0) {
+        send_error_response("einval");
+        return;
+    }   
+
+    int result = Cli_Delete(Client, (int)block_num, (int)block_type);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    
+    send_ok_response();
+}
+
+/**
+ *  Uploads a DB from AG. (gets a DB from PLC)
+ *  This function is equivalent to Cli_Upload() with BlockType = Block_DB 
+ *  but it uses a different approach so it's  not subject to the security level set.
+ *  Only data is uploaded. (typically the size is 65536)
+*/
+static void handle_db_get(const char *req, int *req_index)
+{
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":db_get requires a 2-tuple, term_size = %d", term_size);
+    
+    unsigned long db_number;
+    if (ei_decode_ulong(req, req_index, &db_number) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    byte data[size];
+    int length = (int)size;    //check for a better way of casting...
+    int result = Cli_DBGet(Client, (int)db_number, &data, &length);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    
+    send_data_response(data, 5, (int)size);
+}
+
+/**
+ *  Fill a DB in AG with a given byte without the need of specifying its size.
+*/
+static void handle_db_fill(const char *req, int *req_index)
+{
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":db_fill requires a 2-tuple, term_size = %d", term_size);
+    
+    unsigned long db_number;
+    if (ei_decode_ulong(req, req_index, &db_number) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long fill_char;
+    if (ei_decode_ulong(req, req_index, &fill_char) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    send_data_response(&fill_char,1,1);
+    
+    int result = Cli_DBFill(Client, (int)db_number, (int)fill_char);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    
+    send_ok_response();
 }
 
 static void handle_test(const char *req, int *req_index)
@@ -1684,8 +1917,14 @@ static struct request_handler request_handlers[] = {
     {"write_multi_vars", handle_write_multi_vars},
     {"list_blocks", handle_list_blocks},
     {"list_blocks_of_type", handle_list_blocks_of_type},
-    {"get_ag_block_info",handle_get_ag_block_info},
-    {"get_pg_block_info",handle_get_pg_block_info},
+    {"get_ag_block_info", handle_get_ag_block_info},
+    {"get_pg_block_info", handle_get_pg_block_info},
+    {"full_upload", handle_full_upload},
+    {"upload", handle_upload},
+    {"download", handle_download},
+    {"delete", handle_delete},
+    {"db_get", handle_db_get},
+    {"db_fill", handle_db_fill},
     { NULL, NULL }
 };
 
