@@ -98,6 +98,7 @@ static void send_ok_response()
 static void send_data_response(void *data, int data_type, int data_len)
 {
     char resp[256];
+    char version[5];
     byte r_len = 1;
     long i_struct;
     int resp_index = sizeof(uint16_t); // Space for payload size
@@ -270,6 +271,73 @@ static void send_data_response(void *data, int data_type, int data_len)
             ei_encode_binary(resp, &resp_index, ((TS7BlockInfo *)data)->Header, 9);
 
             ei_encode_empty_list(resp, &resp_index);
+        break;
+        
+        case 11: //TS7OrderCode
+            version[0] = ((TS7OrderCode *)data)->V1 + 0x30;
+            version[1] = '.';
+            version[2] = ((TS7OrderCode *)data)->V2 + 0x30;
+            version[3] = '.';
+            version[4] = ((TS7OrderCode *)data)->V3 + 0x30;
+            ei_encode_list_header(resp, &resp_index, data_len);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "Code");
+            ei_encode_binary(resp, &resp_index, ((TS7OrderCode *)data)->Code, 20);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "Version");
+            ei_encode_binary(resp, &resp_index, version, sizeof(version));
+            
+            ei_encode_empty_list(resp, &resp_index);        
+        break;
+
+        case 12:    //TS7CpuInfo
+            ei_encode_list_header(resp, &resp_index, data_len);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "ModuleTypeName");
+            ei_encode_binary(resp, &resp_index, ((TS7CpuInfo *)data)->ModuleTypeName, 33);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "SerialNumber");
+            ei_encode_binary(resp, &resp_index, ((TS7CpuInfo *)data)->SerialNumber, 25);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "ASName");
+            ei_encode_binary(resp, &resp_index, ((TS7CpuInfo *)data)->ASName, 25);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "Copyright");
+            ei_encode_binary(resp, &resp_index, ((TS7CpuInfo *)data)->Copyright, 27);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "ModuleName");
+            ei_encode_binary(resp, &resp_index, ((TS7CpuInfo *)data)->ModuleName, 25);
+            
+            ei_encode_empty_list(resp, &resp_index);    
+        break;
+
+        case 13:    //TS7CpInfo
+            ei_encode_list_header(resp, &resp_index, data_len);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "MaxPduLengt");
+            ei_encode_long(resp, &resp_index, ((TS7CpInfo *)data)->MaxPduLengt);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "MaxConnections");
+            ei_encode_long(resp, &resp_index, ((TS7CpInfo *)data)->MaxConnections);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "MaxMpiRate");
+            ei_encode_long(resp, &resp_index, ((TS7CpInfo *)data)->MaxMpiRate);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "MaxBusRate");
+            ei_encode_long(resp, &resp_index, ((TS7CpInfo *)data)->MaxBusRate);
+            
+            ei_encode_empty_list(resp, &resp_index);    
         break;
 
         default:
@@ -1862,8 +1930,6 @@ static void handle_db_fill(const char *req, int *req_index)
         send_error_response("einval");
         return;
     }
-
-    send_data_response(&fill_char,1,1);
     
     int result = Cli_DBFill(Client, (int)db_number, (int)fill_char);
     if (result != 0){
@@ -1875,10 +1941,123 @@ static void handle_db_fill(const char *req, int *req_index)
     send_ok_response();
 }
 
+//    System info functions
+
+/**
+ *  Reads a partial list of given ID and INDEX
+ *  See System Software for S7-300/400 System and Standard Functions 
+ *  Volume 1 and Volume 2 for ID and INDEX info (chapter 13.3 ), look for 
+ *  TIA Portal Information Systems for DR data type.
+*/
+static void handle_read_szl(const char *req, int *req_index)
+{
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":read_szl requires a 2-tuple, term_size = %d", term_size);
+    
+    unsigned long ID;
+    if (ei_decode_ulong(req, req_index, &ID) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    unsigned long Index;
+    if (ei_decode_ulong(req, req_index, &Index) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    TS7SZL data;
+    int size = sizeof(data);
+    int result = Cli_ReadSZL(Client, (int)ID, (int)Index, &data, &size);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    //it maybe size 
+    int dim = data.Header.LENTHDR*data.Header.N_DR;
+    send_data_response(data.Data, 5, (int)dim);
+
+}
+
+/**
+ *  Reads the directory of the partial list
+ *  See System Software for S7-300/400 System and Standard Functions 
+ *  Volume 1 and Volume 2 for ID and INDEX info (chapter 13.3 ), not sure
+ *  how to use the function.
+*/
+static void handle_read_szl_list(const char *req, int *req_index)
+{
+    TS7SZLList data;
+    int size = sizeof(data);
+    int result = Cli_ReadSZLList(Client, &data, &size);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    //it maybe size 
+    send_data_response(data.List, 8, (int)size);
+
+}
+
+/**
+ *  Gets CPU order code and version info.
+*/
+static void handle_get_order_code(const char *req, int *req_index)
+{
+    TS7OrderCode data;
+    int result = Cli_GetOrderCode(Client, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    //sends TS7OrderCode
+    send_data_response(&data, 11, 2);
+
+}
+
+/**
+ *  Gets CPU module name, serial number and other info.
+*/
+static void handle_get_cpu_info(const char *req, int *req_index)
+{
+    TS7CpuInfo data;
+    int result = Cli_GetCpuInfo(Client, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    
+    //sends TS7CpuInfo
+    send_data_response(&data, 12, 5);
+
+}
+
+/**
+ *  Gets CP (commnication processor) info.
+*/
+static void handle_get_cp_info(const char *req, int *req_index)
+{
+    TS7CpInfo data;
+    int result = Cli_GetCpInfo(Client, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    //sends TS7CpuInfo
+    send_data_response(&data, 13, 4);
+}
+
 static void handle_test(const char *req, int *req_index)
 {
-    uint16_t data[3]={234,230,235};
-    send_data_response(data, 8, 3);
     send_ok_response();    
 }
 
@@ -1925,6 +2104,12 @@ static struct request_handler request_handlers[] = {
     {"delete", handle_delete},
     {"db_get", handle_db_get},
     {"db_fill", handle_db_fill},
+
+    {"read_szl", handle_read_szl},
+    {"read_szl_list", handle_read_szl_list},
+    {"get_order_code", handle_get_order_code},
+    {"get_cpu_info", handle_get_cpu_info},
+    {"get_cp_info", handle_get_cp_info},
     { NULL, NULL }
 };
 

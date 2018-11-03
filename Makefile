@@ -66,5 +66,5 @@ snap7:
 
 clean:
 	rm -f priv/*.o src/*.o src/*.so src/*.o
-	rm -rf /priv
+	rm -rf priv
 	make -C $(SNAP7_PATH)$(OS_PATH) -f $(TARGET).mk clean

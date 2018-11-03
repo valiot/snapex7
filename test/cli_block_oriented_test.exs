@@ -167,24 +167,24 @@ defmodule CliBlockOrientedTest do
   #   assert c_response == :ok
   # end
 
-  test "handle_db_fill", state do
-    msg = {:db_fill, {0x38, 0x03}} #{Blocktype, blocknumber}
-    send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+  # test "handle_db_fill", state do
+  #   msg = {:db_fill, {0x38, 0x03}} #{Blocktype, blocknumber}
+  #   send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
-    c_response =
-      receive do
-        {_, {:data, <<?r, response::binary>>}} ->
-          :erlang.binary_to_term(response)
-        x ->
-          IO.inspect(x)
-          :error
-      after
-        1000 ->
-          # Not sure how this can be recovered
-          exit(:port_timed_out)
-      end
+  #   c_response =
+  #     receive do
+  #       {_, {:data, <<?r, response::binary>>}} ->
+  #         :erlang.binary_to_term(response)
+  #       x ->
+  #         IO.inspect(x)
+  #         :error
+  #     after
+  #       1000 ->
+  #         # Not sure how this can be recovered
+  #         exit(:port_timed_out)
+  #     end
 
-    assert c_response == :ok
-  end
+  #   assert c_response == :ok
+  # end
 
 end

@@ -124,7 +124,68 @@ int main()
     Items[1].pdata = &DB2;
 
     result = Cli_ReadMultiVars(Client, &Items[0], 2);
-    //printf("r = %d\n", result);
     ReadmultiVars(&Items);
+
+    //readszl test
+    int ID = 0x0111;
+    int Index = 0x0006;
+    TS7SZL data;
+    int size = sizeof(data);
+    result = Cli_ReadSZL(Client, ID, Index, &data, &size);
+    printf("r = %d\n", result);
+    printf("size = %d\n", size);
+    printf("LENTHDR = %d\n", data.Header.LENTHDR);
+    printf("N_DR = %d\n", data.Header.N_DR);
+    int lim =  data.Header.LENTHDR*data.Header.N_DR;
+    for(int index =0; index<size; index++) 
+    {
+        printf("b%d = %d\n", index, data.Data[index]);
+    }
+
+    //readszl_list test
+    TS7SZLList data2;
+    size = sizeof(data2);
+    printf("size = %d\n", size);
+    result = Cli_ReadSZLList(Client, &data2, &size);
+    printf("r = %d\n", result);
+    printf("size = %d\n", size);
+    printf("LENTHDR = %d\n", data2.Header.LENTHDR);
+    printf("N_DR = %d\n", data2.Header.N_DR);
+    lim =  data2.Header.LENTHDR*data2.Header.N_DR;
+    for(int index =0; index<size; index++) 
+    {
+        printf("b%d = %d\n", index, data2.List[index]);
+    }
+    
+    // GetOrder code
+    TS7OrderCode data3;
+    result = Cli_GetOrderCode(Client, &data3);
+    printf("r = %d\n", result);
+    for(int index =0; index<21; index++) 
+    {
+        printf("b%d = %d\n", index, data3.Code[index]);
+    }
+    printf("V1 = %d\n", data3.V1);
+    printf("V2 = %d\n", data3.V2);
+    printf("V3 = %d\n", data3.V3);    
+
+    //GetCpuInfo S7-1200 not supported
+    TS7CpuInfo Info;
+    result = Cli_GetCpuInfo(Client, &Info);
+    printf("r = %d\n", result);
+    printf("%s\n", Info.ModuleTypeName);
+    printf("%s\n", Info.SerialNumber);
+    printf("%s\n", Info.ASName);
+    printf("%s\n", Info.ModuleName);
+
+    //GetCpInfo S7-1200 not supported
+    TS7CpInfo info;
+    result = Cli_GetCpInfo(Client, &info);
+    printf("r = %d\n", result);
+    printf("%d\n", info.MaxPduLengt);
+    printf("%d\n", info.MaxConnections);
+    printf("%d\n", info.MaxMpiRate);
+    printf("%d\n", info.MaxBusRate);
+
     Cli_Destroy(&Client);    
 }
