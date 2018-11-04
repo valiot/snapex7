@@ -340,6 +340,48 @@ static void send_data_response(void *data, int data_type, int data_len)
             ei_encode_empty_list(resp, &resp_index);    
         break;
 
+        case 14: // tm
+            ei_encode_list_header(resp, &resp_index, data_len);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "tm_sec");
+            ei_encode_long(resp, &resp_index, ((tm *)data)->tm_sec);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "tm_min");
+            ei_encode_long(resp, &resp_index, ((tm *)data)->tm_min);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "tm_hour");
+            ei_encode_long(resp, &resp_index, ((tm *)data)->tm_hour);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "tm_mday");
+            ei_encode_long(resp, &resp_index, ((tm *)data)->tm_mday);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "tm_mon");
+            ei_encode_long(resp, &resp_index, ((tm *)data)->tm_mon);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "tm_year");
+            ei_encode_long(resp, &resp_index, ((tm *)data)->tm_year);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "tm_wday");
+            ei_encode_long(resp, &resp_index, ((tm *)data)->tm_wday);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "tm_yday");
+            ei_encode_long(resp, &resp_index, ((tm *)data)->tm_yday);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "tm_isdst");
+            ei_encode_long(resp, &resp_index, ((tm *)data)->tm_isdst);
+
+            ei_encode_empty_list(resp, &resp_index);
+        break;
+
         default:
             errx(EXIT_FAILURE, "data_type error");
         break;
@@ -1905,7 +1947,7 @@ static void handle_db_get(const char *req, int *req_index)
         return;
     }
     
-    send_data_response(data, 5, (int)size);
+    send_data_response(data, 8, (int)size);
 }
 
 /**
@@ -1932,6 +1974,125 @@ static void handle_db_fill(const char *req, int *req_index)
     }
     
     int result = Cli_DBFill(Client, (int)db_number, (int)fill_char);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    
+    send_ok_response();
+}
+
+//    Date/Time functions
+
+/**
+ *  Reads PLC date and time.
+*/
+static void handle_get_plc_date_time(const char *req, int *req_index)
+{
+    tm date;
+    int result = Cli_GetPlcDateTime(Client, &date);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    date.tm_mon++;
+    date.tm_year += 1900;
+    send_data_response(&date, 14, 9);
+}
+
+/**
+ *  Sets PLC date and time.
+*/
+static void handle_set_plc_date_time(const char *req, int *req_index)
+{
+    tm date;
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 9)
+        errx(EXIT_FAILURE, ":set_plc_date_time requires a 9-tuple, term_size = %d", term_size);
+
+    unsigned long tm_sec;
+    if (ei_decode_ulong(req, req_index, &tm_sec) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    date.tm_sec = tm_sec;
+
+    unsigned long tm_min;
+    if (ei_decode_ulong(req, req_index, &tm_min) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    date.tm_min = tm_min;
+
+    unsigned long tm_hour;
+    if (ei_decode_ulong(req, req_index, &tm_hour) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    date.tm_hour = tm_hour;
+
+    unsigned long tm_mday;
+    if (ei_decode_ulong(req, req_index, &tm_mday) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    date.tm_mday = tm_mday;
+
+    unsigned long tm_mon;
+    if (ei_decode_ulong(req, req_index, &tm_mon) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    date.tm_mon = tm_mon - 1;
+
+    unsigned long tm_year;
+    if (ei_decode_ulong(req, req_index, &tm_year) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    date.tm_year = tm_year - 1900;
+
+    unsigned long tm_wday;
+    if (ei_decode_ulong(req, req_index, &tm_wday) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    date.tm_wday = tm_wday;
+
+    unsigned long tm_yday;
+    if (ei_decode_ulong(req, req_index, &tm_yday) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    date.tm_yday = tm_yday;
+
+    unsigned long tm_isdst;
+    if (ei_decode_ulong(req, req_index, &tm_isdst) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    date.tm_isdst = tm_isdst;
+    
+    int result = Cli_SetPlcDateTime(Client, &date);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    
+    send_ok_response();
+}
+
+/**
+ *  Sets PLC date and time in accord to the PC system Date/Time.
+*/
+static void handle_set_plc_system__date_time(const char *req, int *req_index)
+{
+    int result = Cli_GetPlcSystemDateTime(Client);
     if (result != 0){
         //the paramater was invalid.
         send_snap7_errors(result);
@@ -1980,7 +2141,6 @@ static void handle_read_szl(const char *req, int *req_index)
     //it maybe size 
     int dim = data.Header.LENTHDR*data.Header.N_DR;
     send_data_response(data.Data, 5, (int)dim);
-
 }
 
 /**
@@ -2001,7 +2161,6 @@ static void handle_read_szl_list(const char *req, int *req_index)
     }
     //it maybe size 
     send_data_response(data.List, 8, (int)size);
-
 }
 
 /**
@@ -2018,7 +2177,6 @@ static void handle_get_order_code(const char *req, int *req_index)
     }
     //sends TS7OrderCode
     send_data_response(&data, 11, 2);
-
 }
 
 /**
@@ -2036,7 +2194,6 @@ static void handle_get_cpu_info(const char *req, int *req_index)
     
     //sends TS7CpuInfo
     send_data_response(&data, 12, 5);
-
 }
 
 /**
@@ -2104,7 +2261,9 @@ static struct request_handler request_handlers[] = {
     {"delete", handle_delete},
     {"db_get", handle_db_get},
     {"db_fill", handle_db_fill},
-
+    {"get_plc_date_time", handle_get_plc_date_time},
+    {"set_plc_date_time", handle_set_plc_date_time},
+    {"set_plc_system__date_time", handle_set_plc_system__date_time},
     {"read_szl", handle_read_szl},
     {"read_szl_list", handle_read_szl_list},
     {"get_order_code", handle_get_order_code},
