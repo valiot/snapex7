@@ -2090,9 +2090,9 @@ static void handle_set_plc_date_time(const char *req, int *req_index)
 /**
  *  Sets PLC date and time in accord to the PC system Date/Time.
 */
-static void handle_set_plc_system__date_time(const char *req, int *req_index)
+static void handle_set_plc_system_date_time(const char *req, int *req_index)
 {
-    int result = Cli_GetPlcSystemDateTime(Client);
+    int result = Cli_SetPlcSystemDateTime(Client);
     if (result != 0){
         //the paramater was invalid.
         send_snap7_errors(result);
@@ -2213,6 +2213,130 @@ static void handle_get_cp_info(const char *req, int *req_index)
     send_data_response(&data, 13, 4);
 }
 
+// PLC control functions
+
+/**
+ *  Puts the CPU in RUN mode performing an HOT START
+*/
+static void handle_plc_hot_start(const char *req, int *req_index)
+{
+    int result = Cli_PlcHotStart(Client);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/**
+ *  Puts the CPU in RUN mode performing an COLD START
+*/
+static void handle_plc_cold_start(const char *req, int *req_index)
+{
+    int result = Cli_PlcColdStart(Client);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/**
+ *  Puts the CPU in STOP mode.
+*/
+static void handle_plc_stop(const char *req, int *req_index)
+{
+    int result = Cli_PlcStop(Client);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/**
+ *  Performs the Copy Ram to Rom action.
+ *  (CPU must be in STOP mode)
+*/
+static void handle_copy_ram_to_rom(const char *req, int *req_index)
+{
+    unsigned long timeout;
+    if (ei_decode_ulong(req, req_index, &timeout) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    int result = Cli_CopyRamToRom(Client, (int)timeout);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/**
+ *  Performs the Memmory compress action.
+ *  (CPU must be in STOP mode)
+*/
+static void handle_compress(const char *req, int *req_index)
+{
+    unsigned long timeout;
+    if (ei_decode_ulong(req, req_index, &timeout) < 0) {
+        send_error_response("einval");
+        return;
+    }
+
+    int result = Cli_Compress(Client, (int)timeout);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/**
+ *  Returns the CPU status (running/stopped).
+*/
+static void handle_get_plc_status(const char *req, int *req_index)
+{
+    int status;
+    int result = Cli_GetPlcStatus(Client, &status);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    switch(status)
+    {
+        case 0x00:
+            send_data_response("S7CpuStatusUnknown", 6, 0);
+        break;
+        
+        case 0x04:
+            send_data_response("S7CpuStatusStop", 6, 0);
+        break;
+
+        case 0x08:
+            send_data_response("S7CpuStatusRun", 6, 0);
+        break;
+
+        default:
+            errx(EXIT_FAILURE, ":get_plc_status unknown snap7 status = %d", status);
+        break;
+    }
+}
+
 static void handle_test(const char *req, int *req_index)
 {
     send_ok_response();    
@@ -2263,12 +2387,18 @@ static struct request_handler request_handlers[] = {
     {"db_fill", handle_db_fill},
     {"get_plc_date_time", handle_get_plc_date_time},
     {"set_plc_date_time", handle_set_plc_date_time},
-    {"set_plc_system__date_time", handle_set_plc_system__date_time},
+    {"set_plc_system_date_time", handle_set_plc_system_date_time},
     {"read_szl", handle_read_szl},
     {"read_szl_list", handle_read_szl_list},
     {"get_order_code", handle_get_order_code},
     {"get_cpu_info", handle_get_cpu_info},
     {"get_cp_info", handle_get_cp_info},
+    {"plc_hot_start", handle_plc_hot_start},
+    {"plc_cold_start", handle_plc_cold_start},
+    {"plc_stop", handle_plc_stop},
+    {"copy_ram_to_rom", handle_copy_ram_to_rom},
+    {"compress", handle_compress},
+    {"get_plc_status", handle_get_plc_status},
     { NULL, NULL }
 };
 
