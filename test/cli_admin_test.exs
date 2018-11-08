@@ -50,7 +50,7 @@ defmodule CliAdminFuncTest do
   end
 
   test "handle_connect_to test", state do
-    msg = {:connect_to, {"192.168.0.1", 0, 1}}
+    msg = {:connect_to, {"192.168.0.1", 0, 1}}  #
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
@@ -95,8 +95,7 @@ defmodule CliAdminFuncTest do
       end
     d_response =
       case c_response do
-        {:error, x} ->
-          IO.puts("connect response is #{inspect(x)}")
+        {:error, _x} ->
           :error
         :ok ->
           :ok

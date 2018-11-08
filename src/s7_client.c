@@ -382,6 +382,32 @@ static void send_data_response(void *data, int data_type, int data_len)
             ei_encode_empty_list(resp, &resp_index);
         break;
 
+        case 15: //TS7Protection
+            ei_encode_list_header(resp, &resp_index, data_len);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "sch_schal");
+            ei_encode_long(resp, &resp_index, ((TS7Protection *)data)->sch_schal);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "sch_par");
+            ei_encode_long(resp, &resp_index, ((TS7Protection *)data)->sch_par);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "sch_rel");
+            ei_encode_long(resp, &resp_index, ((TS7Protection *)data)->sch_rel);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "bart_sch");
+            ei_encode_long(resp, &resp_index, ((TS7Protection *)data)->bart_sch);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "anl_sch");
+            ei_encode_long(resp, &resp_index, ((TS7Protection *)data)->anl_sch);
+            
+            ei_encode_empty_list(resp, &resp_index);
+        break;
+
         default:
             errx(EXIT_FAILURE, "data_type error");
         break;
@@ -1534,7 +1560,7 @@ static void handle_write_multi_vars(const char *req, int *req_index)
                 send_error_response("einval");
                 return;
             }
-            //send_data_response(atom, 6, 2);
+            
             if(!strcmp(atom, "pdata")) 
             {
                 if(ei_decode_binary(req, req_index, data, &bin_size) < 0)
@@ -1663,8 +1689,8 @@ static void handle_list_blocks_of_type(const char *req, int *req_index)
         return;
     }
     
-    //send TS7BlocksOfType
-    send_data_response(data, 8, items_count);
+    //send TS7BlocksOfType b
+    send_data_response(&data, 8, items_count);
 }
 
 /**
@@ -2337,6 +2363,72 @@ static void handle_get_plc_status(const char *req, int *req_index)
     }
 }
 
+//  Security function
+
+/**
+ *  Send the password (8 char string) to the PLC to meet its security level,
+ *  (a greater password size will be timmed, and a smaller one will be "right 
+ *  space padded").
+*/
+static void handle_set_session_password(const char *req, int *req_index)
+{
+    int term_type;
+    int term_size;
+    char password[13];
+    long binary_len;
+    if (ei_get_type(req, req_index, &term_type, &term_size) < 0 ||
+            term_type != ERL_BINARY_EXT ||
+            term_size >= (int) sizeof(password) ||
+            ei_decode_binary(req, req_index, password, &binary_len) < 0) {
+        // The name is almost certainly too long, so report that it
+        // doesn't exist.
+        send_error_response("enoent");
+        return;
+    }
+    password[term_size] = '\0';
+    
+    int result = Cli_SetSessionPassword(Client, password);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    send_ok_response();
+}
+
+
+/**
+ *  Clears the passord set for the current session (logout).
+*/
+static void handle_clear_session_password(const char *req, int *req_index)
+{    
+    int result = Cli_ClearSessionPassword(Client);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    send_ok_response();
+}
+
+/**
+ *  Gets the CPU protection level info.
+*/
+static void handle_get_protection(const char *req, int *req_index)
+{    
+    TS7Protection data;
+    int result = Cli_GetProtection(Client, &data);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+    
+    send_data_response(&data, 15, 5);
+}
+
 static void handle_test(const char *req, int *req_index)
 {
     send_ok_response();    
@@ -2399,6 +2491,9 @@ static struct request_handler request_handlers[] = {
     {"copy_ram_to_rom", handle_copy_ram_to_rom},
     {"compress", handle_compress},
     {"get_plc_status", handle_get_plc_status},
+    {"set_session_password", handle_set_session_password},
+    {"clear_session_password", handle_clear_session_password},
+    {"get_protection", handle_get_protection},
     { NULL, NULL }
 };
 

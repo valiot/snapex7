@@ -1,5 +1,5 @@
 defmodule CliPlcControlTest do
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
   doctest Snapex7
   # We don't have the way to test this function
   # (we've a plc s7-1200 and snap7 server doesn't support these functions)
@@ -42,7 +42,7 @@ defmodule CliPlcControlTest do
               exit(:port_timed_out)
           end
 
-        assert c_response == :ok
+        assert c_response == {:error, %{eiso: nil, es7: :errCliCannotStartPLC, etcp: nil}} #when PLC is running
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -67,7 +67,7 @@ defmodule CliPlcControlTest do
               exit(:port_timed_out)
           end
 
-        assert c_response == :ok
+        assert c_response ==  {:error, %{eiso: nil, es7: :errCliCannotStartPLC, etcp: nil}} #when PLC is running
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -92,7 +92,7 @@ defmodule CliPlcControlTest do
               exit(:port_timed_out)
           end
 
-        assert c_response == :ok
+        assert c_response == {:error, %{eiso: nil, es7: :errCliCannotStopPLC, etcp: nil}} #PLC s7-1200 cannot be stopped
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -117,7 +117,7 @@ defmodule CliPlcControlTest do
               exit(:port_timed_out)
           end
 
-        assert c_response == :ok
+        assert c_response == {:error, %{eiso: nil, es7: :errCliCannotCopyRamToRom, etcp: nil}} #when PLC is running
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -142,7 +142,7 @@ defmodule CliPlcControlTest do
               exit(:port_timed_out)
           end
 
-        assert c_response == :ok
+        assert c_response == {:error, %{eiso: nil, es7: :errCliCannotCompress, etcp: nil}} #when the PLC is runnig
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -167,9 +167,9 @@ defmodule CliPlcControlTest do
               exit(:port_timed_out)
           end
 
-        assert c_response == :ok
-      # _ ->
-      #   IO.puts("(#{__MODULE__}) Not connected")
-    #end
+        assert c_response == {:ok, :S7CpuStatusRun} #when the PLC is running
+      _ ->
+        IO.puts("(#{__MODULE__}) Not connected")
+    end
   end
 end

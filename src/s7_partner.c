@@ -169,23 +169,59 @@ int main()
     printf("V2 = %d\n", data3.V2);
     printf("V3 = %d\n", data3.V3);    
 
-    //GetCpuInfo S7-1200 not supported
-    TS7CpuInfo Info;
-    result = Cli_GetCpuInfo(Client, &Info);
-    printf("r = %d\n", result);
-    printf("%s\n", Info.ModuleTypeName);
-    printf("%s\n", Info.SerialNumber);
-    printf("%s\n", Info.ASName);
-    printf("%s\n", Info.ModuleName);
+    // //GetCpuInfo S7-1200 not supported
+    // TS7CpuInfo Info;
+    // result = Cli_GetCpuInfo(Client, &Info);
+    // printf("r = %d\n", result);
+    // printf("%s\n", Info.ModuleTypeName);
+    // printf("%s\n", Info.SerialNumber);
+    // printf("%s\n", Info.ASName);
+    // printf("%s\n", Info.ModuleName);
 
-    //GetCpInfo S7-1200 not supported
-    TS7CpInfo info;
-    result = Cli_GetCpInfo(Client, &info);
+    // //GetCpInfo S7-1200 not supported
+    // TS7CpInfo info;
+    // result = Cli_GetCpInfo(Client, &info);
+    // printf("r = %d\n", result);
+    // printf("%d\n", info.MaxPduLengt);
+    // printf("%d\n", info.MaxConnections);
+    // printf("%d\n", info.MaxMpiRate);
+    // printf("%d\n", info.MaxBusRate);
+
+    // //GetProtection S7-1200 not supported
+    // TS7Protection data4;
+    // result = Cli_GetProtection(Client, &data4);
+    // printf("r = %d\n", result);
+    // printf("V1 = %d\n", data4.anl_sch);
+    // printf("V2 = %d\n", data4.bart_sch);
+    // printf("V3 = %d\n", data4.sch_par);
+    // printf("V4 = %d\n", data4.sch_rel);
+    // printf("V5 = %d\n", data4.sch_schal);
+
+    //Get plc status
+    int status;
+    result = Cli_GetPlcStatus(Client, &status);
+    switch(status)
+    {
+        case 0x00:
+            printf("S7CpuStatusUnknown\n");
+        break;
+        
+        case 0x04:
+            printf("S7CpuStatusStop\n");
+        break;
+
+        case 0x08:
+            printf("S7CpuStatusRun\n");
+        break;
+
+        default:
+            errx(EXIT_FAILURE, ":get_plc_status unknown snap7 status = %d", status);
+        break;
+    }
+
+    //PlcStop (PC cannot be stopped)
+    result = Cli_PlcStop(Client);
     printf("r = %d\n", result);
-    printf("%d\n", info.MaxPduLengt);
-    printf("%d\n", info.MaxConnections);
-    printf("%d\n", info.MaxMpiRate);
-    printf("%d\n", info.MaxBusRate);
 
     Cli_Destroy(&Client);    
 }
