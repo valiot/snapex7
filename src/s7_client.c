@@ -99,6 +99,7 @@ static void send_data_response(void *data, int data_type, int data_len)
 {
     char resp[256];
     char version[5];
+    uint32_t code;
     byte r_len = 1;
     long i_struct;
     int resp_index = sizeof(uint16_t); // Space for payload size
@@ -408,6 +409,46 @@ static void send_data_response(void *data, int data_type, int data_len)
             ei_encode_empty_list(resp, &resp_index);
         break;
 
+        case 16: //error code
+            code = *(uint32_t *) data; 
+            int index_s7 = code / 0x100000;
+            int index_iso = (code & 0x000F0000)/ 0x10000;
+            int index_tcp = (code & 0xFFFF);
+            ei_encode_map_header(resp, &resp_index, 3);
+    
+            ei_encode_atom(resp, &resp_index, "es7");
+            if(index_s7 != 0)
+                ei_encode_atom(resp, &resp_index, err_s7[index_s7-1]);
+            else
+                ei_encode_atom(resp, &resp_index, "nil");
+            
+            ei_encode_atom(resp, &resp_index, "eiso");
+            if(index_iso != 0)
+                ei_encode_atom(resp, &resp_index, err_iso[index_iso-1]);
+            else
+                ei_encode_atom(resp, &resp_index, "nil");
+
+            ei_encode_atom(resp, &resp_index, "etcp");
+            if(index_tcp != 0)
+                ei_encode_char(resp, &resp_index, index_tcp);
+            else
+                ei_encode_atom(resp, &resp_index, "nil");
+        break;
+
+        case 17: //PDU
+            ei_encode_list_header(resp, &resp_index, data_len);
+            
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "Requested");
+            ei_encode_long(resp, &resp_index, ((int *)data)[0]);
+
+            ei_encode_tuple_header(resp, &resp_index, 2);
+            ei_encode_atom(resp, &resp_index, "Negotiated");
+            ei_encode_long(resp, &resp_index, ((int *)data)[1]);
+            
+            ei_encode_empty_list(resp, &resp_index);
+        break;
+
         default:
             errx(EXIT_FAILURE, "data_type error");
         break;
@@ -419,7 +460,7 @@ static void send_data_response(void *data, int data_type, int data_len)
 /**
  * @brief Send a response of the form {:error, reason}
  *
- * @param reason a reason (sent back as an atom)
+ * @param reason is an error reason (sended back as an atom)
  */
 static void send_error_response(const char *reason)
 {
@@ -435,7 +476,7 @@ static void send_error_response(const char *reason)
 
 /**
  * @brief Send a response of the form {:error, reasons}
- *  where 'reasons' is map (%{es7: atom/nil, eiso: atom/nil, etcp: int/nil}), 
+ *  where 'reasons' is a map (%{es7: atom/nil, eiso: atom/nil, etcp: int/nil}), 
  *  (check documentation 'snap7/doc/snap7-refman.pdf' for more details,
  *  pg. 253) or nil if no error related to that key.
  * @param code, is an error code from snap7 source code.
@@ -1690,7 +1731,7 @@ static void handle_list_blocks_of_type(const char *req, int *req_index)
     }
     
     //send TS7BlocksOfType b
-    send_data_response(&data, 8, items_count);
+    send_data_response(data, 8, items_count);
 }
 
 /**
@@ -2429,6 +2470,75 @@ static void handle_get_protection(const char *req, int *req_index)
     send_data_response(&data, 15, 5);
 }
 
+// Miscellaneous functions
+
+/**
+ *  Returns the last job execution time in milliseconds.
+*/
+static void handle_get_exec_time(const char *req, int *req_index)
+{
+    int Time;
+    int result = Cli_GetExecTime(Client, &Time);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    send_data_response(&Time, 2, 0);
+}
+
+/**
+ *  Returns the last job result.
+*/
+static void handle_get_last_error(const char *req, int *req_index)
+{
+    int error;
+    int result = Cli_GetLastError(Client, &error);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    send_data_response(&error, 16, 0);
+}
+
+/**
+ *  Returns info about the PDU length
+*/
+static void handle_get_pdu_length(const char *req, int *req_index)
+{
+    int req_neg[2];
+    int result = Cli_GetPduLength(Client, &req_neg[0], &req_neg[1]);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    send_data_response(req_neg, 17, 2);
+}
+
+/**
+ *  Returns the connection status
+*/
+static void handle_get_connected(const char *req, int *req_index)
+{
+    int status;
+    int result = Cli_GetConnected(Client, &status);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+
+    if(status != 0)
+        send_data_response("true", 6, 0);
+    else
+        send_data_response("false", 6, 0);    
+}
+
 static void handle_test(const char *req, int *req_index)
 {
     send_ok_response();    
@@ -2494,6 +2604,11 @@ static struct request_handler request_handlers[] = {
     {"set_session_password", handle_set_session_password},
     {"clear_session_password", handle_clear_session_password},
     {"get_protection", handle_get_protection},
+
+    {"get_exec_time", handle_get_exec_time},
+    {"get_last_error", handle_get_last_error},
+    {"get_pdu_length", handle_get_pdu_length},
+    {"get_connected", handle_get_connected},
     { NULL, NULL }
 };
 

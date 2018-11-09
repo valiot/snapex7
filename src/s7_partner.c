@@ -15,7 +15,7 @@ byte MyAB32[256]; // byte is a portable type of snap7.h
 byte MyEB32[256]; // byte is a portable type of snap7.h
 float f = 123.45;
 byte* bytes = (byte*)&f;
-
+S7Object Server;
 S7Object Client;
 
 void ReadmultiVars(void *array)
@@ -47,7 +47,7 @@ int main()
     printf("r = %d\n", result);
 
     // Read/Write Area test
-
+    printf("Read/write area test-----------------------------\n");
     Cli_ReadArea(Client, S7AreaDB, 1, 2, 4, S7WLByte, &MyDB32);
     
     printf("0x");
@@ -72,7 +72,7 @@ int main()
     result = Cli_WriteArea(Client, S7AreaDB, 1, 2, 1, S7WLWord, &MyDB32);
     printf("r = %d\n", result);
 
-    // Read/Write Outputs test
+    printf("Read/writeVars test-----------------------------\n");
     Cli_ABRead(Client, 0, 1, &MyAB32);
     printf("0x");
     printf("%02x", MyAB32[0]);
@@ -86,7 +86,7 @@ int main()
     printf("0x");
     printf("%02x", MyAB32[0]);
     printf("\n");
-
+    sleep(1);
     MyAB32[0] = 0x00;
     result = Cli_ABWrite(Client, 0, 1, &MyAB32);
     printf("r = %d\n", result);
@@ -107,6 +107,7 @@ int main()
     // printf("%02x\n", MyDB32[3]);
 
     //ReadmultiVars Test
+    printf("ReadMultiVars test-----------------------------\n");
     TS7DataItem Items[2];
 
     Items[0].Area = S7AreaDB;
@@ -126,7 +127,7 @@ int main()
     result = Cli_ReadMultiVars(Client, &Items[0], 2);
     ReadmultiVars(&Items);
 
-    //readszl test
+    printf("readszl test-----------------------------\n");
     int ID = 0x0111;
     int Index = 0x0006;
     TS7SZL data;
@@ -142,7 +143,8 @@ int main()
         printf("b%d = %d\n", index, data.Data[index]);
     }
 
-    //readszl_list test
+    
+    printf("readszl_list test-----------------------------\n");
     TS7SZLList data2;
     size = sizeof(data2);
     printf("size = %d\n", size);
@@ -157,7 +159,7 @@ int main()
         printf("b%d = %d\n", index, data2.List[index]);
     }
     
-    // GetOrder code
+    printf("GetOrder code-----------------------------\n");
     TS7OrderCode data3;
     result = Cli_GetOrderCode(Client, &data3);
     printf("r = %d\n", result);
@@ -197,7 +199,7 @@ int main()
     // printf("V4 = %d\n", data4.sch_rel);
     // printf("V5 = %d\n", data4.sch_schal);
 
-    //Get plc status
+    printf("GetPlcStatus test-----------------------------\n");
     int status;
     result = Cli_GetPlcStatus(Client, &status);
     switch(status)
@@ -215,13 +217,58 @@ int main()
         break;
 
         default:
-            errx(EXIT_FAILURE, ":get_plc_status unknown snap7 status = %d", status);
+            errx(EXIT_FAILURE, ":get_plc_status unknown snap7 status = %d\n", status);
         break;
     }
 
-    //PlcStop (PC cannot be stopped)
+    printf("PLCStop test-----------------------------\n");
     result = Cli_PlcStop(Client);
     printf("r = %d\n", result);
+    
+    printf("Server test-----------------------------\n");
+    Server = Srv_Create();
+    u_int16_t res = 4040;
+    int Error = Srv_SetParam(Server, 1, &res);
+    printf("r = %d\n", Error);
+    Error = Srv_GetParam(Server, 1, &res);
+    printf("r = %d\n", Error);
+    printf("res = %d\n", res);
+    
+    Error=Srv_Start(Server);
+    printf("r = %d\n", Error);
+    Srv_Destroy(&Server);
+
+    printf("Cli_GetExecTime test-----------------------------\n");
+    int time;
+    result = Cli_GetExecTime(Client, &time);
+    printf("r = %d\n", result);
+    printf("res = %d\n", time);
+
+    printf("Cli_GetLastError test-----------------------------\n");
+    int error;
+    result = Cli_GetLastError(Client, &error);
+    printf("r = %d\n", result);
+    printf("res = %d\n", error);
+    
+    printf("Cli_GetPduLength test-----------------------------\n");
+    int req_neg[2];
+    result = Cli_GetPduLength(Client, &req_neg[0], &req_neg[1]);
+    printf("r = %d\n", result);
+    printf("req = %d\n", req_neg[0]);
+    printf("neg = %d\n", req_neg[1]);
+
+    printf("Cli_ErrorTest test-----------------------------\n");
+    char text[50];
+    result = Cli_ErrorText(111, text, 50);
+    printf("r = %d\n", result);
+    printf("%s", text);
+    printf("\n");
+
+    printf("Connected test-----------------------------\n");
+    int response;
+    result = Cli_GetConnected(Client, &response);
+    printf("r = %d\n", result);
+    printf("res = %d\n", response);
 
     Cli_Destroy(&Client);    
 }
