@@ -35,6 +35,15 @@ void ReadmultiVars(void *array)
     printf("\n");
 }
 
+void print_arrays(byte *data,int size)
+{
+    for(int i = 0; i < size; i++)
+    {
+        printf("%02x ", data[i]);
+    }
+    printf("\n");
+}
+
 int main()
 {
     char *str;
@@ -269,6 +278,17 @@ int main()
     result = Cli_GetConnected(Client, &response);
     printf("r = %d\n", result);
     printf("res = %d\n", response);
+
+    printf("ISO PDU test-----------------------------\n");
+    //db read
+    byte pdu[] = {0x32, 0x01, 0x00, 0x00, 0x01, 0x00, 0x00, 0x0e, 0x00, 0x00, 0x04, 0x01, 0x12, 0x0a, 0x10, 0x02, 0x00, 0x04, 0x00, 0x01, 0x84, 0x00, 0x00, 0x10};
+    int siz = sizeof(pdu);
+    printf("siz before=%d\n", siz);
+    result = Cli_IsoExchangeBuffer(Client, &pdu, &siz);
+    result = Cli_ErrorText(result, text, 50);
+    printf("%s\n", text);
+    printf("siz after=%d\n", siz);
+    print_arrays(pdu, siz);
 
     Cli_Destroy(&Client);    
 }

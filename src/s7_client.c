@@ -2438,7 +2438,6 @@ static void handle_set_session_password(const char *req, int *req_index)
     send_ok_response();
 }
 
-
 /**
  *  Clears the passord set for the current session (logout).
 */
@@ -2470,7 +2469,43 @@ static void handle_get_protection(const char *req, int *req_index)
     send_data_response(&data, 15, 5);
 }
 
-// Miscellaneous functions
+//  Low level functions
+
+/**
+ *  Exchanges a given S7 PDU (protocol data unit) with the CPU,
+*/
+static void handle_iso_exchange_buffer(const char *req, int *req_index)
+{
+    int term_type;
+    int term_size;
+    if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
+        term_size != 2)
+        errx(EXIT_FAILURE, ":db_write requires a 4-tuple, term_size = %d", term_size);
+
+    unsigned long size;
+    if (ei_decode_ulong(req, req_index, &size) < 0) {
+        send_error_response("einval");
+        return;
+    }
+    
+    unsigned char data[1024];
+    long bin_size;
+    int length = (int)size;    //check for a better way of casting...
+    if(ei_decode_binary(req, req_index, data, &bin_size) < 0 ||
+        bin_size != size)
+        errx(EXIT_FAILURE, "binary inconsistent, expected size = %ld, real = %ld", size, bin_size);
+    
+    int result = Cli_IsoExchangeBuffer(Client, &data, &length);
+    if (result != 0){
+        //the paramater was invalid.
+        send_snap7_errors(result);
+        return;
+    }
+            
+    send_data_response(data, 5, size);
+}
+
+//  Miscellaneous functions
 
 /**
  *  Returns the last job execution time in milliseconds.
@@ -2553,7 +2588,7 @@ struct request_handler {
 };
 
 static struct request_handler request_handlers[] = {
-    { "test", handle_test},
+    {"test", handle_test},
     {"set_connection_type", handle_set_connection_type},
     {"connect_to", handle_connect_to},
     {"set_connection_params", handle_set_connection_params},
@@ -2604,7 +2639,7 @@ static struct request_handler request_handlers[] = {
     {"set_session_password", handle_set_session_password},
     {"clear_session_password", handle_clear_session_password},
     {"get_protection", handle_get_protection},
-
+    {"iso_exchange_buffer", handle_iso_exchange_buffer},
     {"get_exec_time", handle_get_exec_time},
     {"get_last_error", handle_get_last_error},
     {"get_pdu_length", handle_get_pdu_length},
