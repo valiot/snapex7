@@ -114,6 +114,63 @@ defmodule Snapex7.Client do
     GenServer.call(pid, {:get_pg_block_info, buffer})
   end
 
+  # Block Oriented functions
+
+  @doc """
+  Uploads a block from AG. (gets a block from PLC)
+  The whole block (including header and footer) is copied into the user buffer (as bytes).
+  """
+  @spec full_upload(GenServer.server(), atom(), integer(), integer()) :: {:ok, binary}  | {:error, map}
+  def full_upload(pid, block_type, block_num, bytes2read) do
+    GenServer.call(pid, {:full_upload, block_type, block_num, bytes2read})
+  end
+
+  @doc """
+  Uploads a block from AG. (gets a block from PLC)
+  Only the block body (but header and footer) is copied into the user buffer (as bytes).
+  """
+  @spec upload(GenServer.server(), atom(), integer(), integer()) :: {:ok, binary}  | {:error, map}
+  def upload(pid, block_type, block_num, bytes2read) do
+    GenServer.call(pid, {:upload, block_type, block_num, bytes2read})
+  end
+
+  @doc """
+  Downloads a block from AG. (gets a block from PLC)
+  The whole block (including header and footer) must be available into the user buffer.
+  """
+  @spec download(GenServer.server(), integer(), binary()) :: :ok | {:error, map}
+  def download(pid, block_num, buffer) do
+    GenServer.call(pid, {:download, block_num, buffer})
+  end
+
+  @doc """
+  Deletes a block from AG.
+  (There is an undo function available).
+  """
+  @spec delete(GenServer.server(), atom(), integer()) :: :ok | {:error, map}
+  def delete(pid, block_type, block_num) do
+    GenServer.call(pid, {:delete, block_type, block_num})
+  end
+
+  @doc """
+  Uploads a DB from AG.
+  This function is equivalent to upload/4 with block_type = :DB but it uses a
+  different approach so it's  not subject to the security level set.
+  Only data is uploaded.
+  """
+  @spec db_get(GenServer.server(), integer(), integer()) :: {:ok, list} | {:error, map}
+  def db_get(pid, db_number, size \\ 65536) do
+    GenServer.call(pid, {:db_get, db_number, size})
+  end
+
+  @doc """
+  Fills a DB in AG qirh a given byte without the need of specifying its size.
+  """
+  @spec db_fill(GenServer.server(), integer(), integer()) :: {:ok, list} | {:error, map}
+  def db_fill(pid, db_number, fill_char) do
+    GenServer.call(pid, {:db_fill, db_number, fill_char})
+  end
+
   def init([]) do
     System.put_env("LD_LIBRARY_PATH", "./src") #change this to :code.priv_dir (Change Makefile)
     executable = :code.priv_dir(:snapex7) ++ '/s7_client.o'
@@ -181,6 +238,42 @@ defmodule Snapex7.Client do
   def handle_call({:get_pg_block_info, buffer}, _from, state) do
     b_size = byte_size(buffer)
     response = call_port(state, :get_pg_block_info, {b_size, buffer})
+    {:reply, response, state}
+  end
+
+  # Block Oriented functions
+
+  def handle_call({:full_upload, block_type, block_num, bytes2read}, _from, state) do
+    block_value = Keyword.fetch!(@block_types, block_type)
+    response = call_port(state, :full_upload, {block_value, block_num, bytes2read})
+    {:reply, response, state}
+  end
+
+  def handle_call({:upload, block_type, block_num, bytes2read}, _from, state) do
+    block_value = Keyword.fetch!(@block_types, block_type)
+    response = call_port(state, :upload, {block_value, block_num, bytes2read})
+    {:reply, response, state}
+  end
+
+  def handle_call({:download, block_num, buffer}, _from, state) do
+    b_size = byte_size(buffer)
+    response = call_port(state, :download, {block_num, b_size, buffer})
+    {:reply, response, state}
+  end
+
+  def handle_call({:delete, block_type, block_num}, _from, state) do
+    block_value = Keyword.fetch!(@block_types, block_type)
+    response = call_port(state, :delete, {block_value, block_num})
+    {:reply, response, state}
+  end
+
+  def handle_call({:db_get, db_number, size}, _from, state) do
+    response = call_port(state, :db_get, {db_number, size})
+    {:reply, response, state}
+  end
+
+  def handle_call({:db_fill, db_number, fill_char}, _from, state) do
+    response = call_port(state, :db_fill, {db_number, fill_char})
     {:reply, response, state}
   end
 

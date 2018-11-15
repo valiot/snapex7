@@ -9,7 +9,7 @@ defmodule DirectoryFunTest do
     %{pid: pid, status: state}
   end
 
-  # function no supported by PLC s7-1200
+  # functions no supported by PLC s7-1200
   test "list_blocks function", state do
     case state.status do
       :connected ->
