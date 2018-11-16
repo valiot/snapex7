@@ -325,7 +325,35 @@ defmodule Snapex7.Client do
     GenServer.call(pid, :get_plc_status)
   end
 
+  # Security functions
 
+  @doc """
+  Send the password (an 8 chars string) to the PLC to meet its security level.
+  """
+  @spec set_session_password(GenServer.server(), binary()) :: :ok | {:error, map} | {:error, :einval}
+  def set_session_password(pid, password) do
+    GenServer.call(pid, {:set_session_password, password})
+  end
+
+  @doc """
+  Clears the password set for the current session (logout).
+  """
+  @spec clear_session_password(GenServer.server()) :: :ok | {:error, map} | {:error, :einval}
+  def clear_session_password(pid) do
+    GenServer.call(pid, :clear_session_password)
+  end
+
+  @doc """
+  Gets the CPU protection level info.
+  """
+  @spec get_protection(GenServer.server()) :: :ok | {:error, map} | {:error, :einval}
+  def get_protection(pid) do
+    GenServer.call(pid, :get_protection)
+  end
+
+
+
+  @spec init([]) :: {:ok, Snapex7.Client.State.t()}
   def init([]) do
     System.put_env("LD_LIBRARY_PATH", "./src") #change this to :code.priv_dir (Change Makefile)
     executable = :code.priv_dir(:snapex7) ++ '/s7_client.o'
@@ -527,6 +555,22 @@ defmodule Snapex7.Client do
     {:reply, response, state}
   end
 
+  #Security functions
+
+  def handle_call({:set_session_password, password}, _from, state) do
+    response = call_port(state, :set_session_password, password)
+    {:reply, response, state}
+  end
+
+  def handle_call(:clear_session_password, _from, state) do
+    response = call_port(state, :clear_session_password, nil)
+    {:reply, response, state}
+  end
+
+  def handle_call(:get_protection, _from, state) do
+    response = call_port(state, :get_protection, nil)
+    {:reply, response, state}
+  end
 
   defp call_port(state, command, arguments, timeout \\ @c_timeout) do
     msg = {command, arguments}
