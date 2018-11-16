@@ -25,47 +25,78 @@ defmodule CliDateTimeTest do
     %{port: port, status: status}
   end
 
-  # test "handle_get_plc_date_time", state do
-  #   msg = {:get_plc_date_time, nil} nil
-  #   send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+  test "handle_get_plc_date_time", state do
+    case state.status do
+      :ok ->
+        msg = {:get_plc_date_time, nil} #nil
+        send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
-  #   c_response =
-  #     receive do
-  #       {_, {:data, <<?r, response::binary>>}} ->
-  #         :erlang.binary_to_term(response)
-  #       x ->
-  #         IO.inspect(x)
-  #         :error
-  #     after
-  #       1000 ->
-  #         # Not sure how this can be recovered
-  #         exit(:port_timed_out)
-  #     end
+        c_response =
+          receive do
+            {_, {:data, <<?r, response::binary>>}} ->
+              :erlang.binary_to_term(response)
+            x ->
+              IO.inspect(x)
+              :error
+          after
+            1000 ->
+              # Not sure how this can be recovered
+              exit(:port_timed_out)
+          end
 
-  #   assert c_response == {:ok}
-  # end
+        assert c_response == {:error, %{eiso: nil, es7: :errCliItemNotAvailable, etcp: nil}}
+      _ ->
+        IO.puts("(#{__MODULE__}) Not connected")
+    end
+  end
 
-  # test "handle_set_plc_date_time", state do
-  #   msg = {:set_plc_date_time, {1, 2, 3, 29, 12, 2018, 0, 355, 1}} #{sec, min, hour, mday, mon, year, wday, yday, isdst}
-  #   send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+  test "handle_set_plc_date_time", state do
+    case state.status do
+      :ok ->              #{sec, min, hour, mday, mon, year, wday, yday, isdst}
+        msg = {:set_plc_date_time, {1, 2, 3, 29, 12, 2018, 0, 355, 1}}
+        send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
-  #   c_response =
-  #     receive do
-  #       {_, {:data, <<?r, response::binary>>}} ->
-  #         :erlang.binary_to_term(response)
-  #       x ->
-  #         IO.inspect(x)
-  #         :error
-  #     after
-  #       1000 ->
-  #         # Not sure how this can be recovered
-  #         exit(:port_timed_out)
-  #     end
+        c_response =
+          receive do
+            {_, {:data, <<?r, response::binary>>}} ->
+              :erlang.binary_to_term(response)
+            x ->
+              IO.inspect(x)
+              :error
+          after
+            1000 ->
+              # Not sure how this can be recovered
+              exit(:port_timed_out)
+          end
 
-  #   assert c_response == {:ok}
-  # end
+        assert c_response == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+      _ ->
+        IO.puts("(#{__MODULE__}) Not connected")
+    end
+  end
 
-  # test "" do
+  test "handle_set_plc_system_date_time", state do
+    case state.status do
+      :ok ->
+        msg = {:set_plc_system_date_time, nil} #NA
+        send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
-  # end
+        c_response =
+          receive do
+            {_, {:data, <<?r, response::binary>>}} ->
+              :erlang.binary_to_term(response)
+            x ->
+              IO.inspect(x)
+              :error
+          after
+            1000 ->
+              # Not sure how this can be recovered
+              exit(:port_timed_out)
+          end
+
+        assert c_response == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+      _ ->
+        IO.puts("(#{__MODULE__}) Not connected")
+    end
+  end
 end

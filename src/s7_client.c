@@ -341,46 +341,35 @@ static void send_data_response(void *data, int data_type, int data_len)
             ei_encode_empty_list(resp, &resp_index);    
         break;
 
-        case 14: // tm
-            ei_encode_list_header(resp, &resp_index, data_len);
-            
-            ei_encode_tuple_header(resp, &resp_index, 2);
+        case 14: // tm            
+            ei_encode_map_header(resp, &resp_index, data_len);
+
             ei_encode_atom(resp, &resp_index, "tm_sec");
             ei_encode_long(resp, &resp_index, ((tm *)data)->tm_sec);
             
-            ei_encode_tuple_header(resp, &resp_index, 2);
             ei_encode_atom(resp, &resp_index, "tm_min");
             ei_encode_long(resp, &resp_index, ((tm *)data)->tm_min);
             
-            ei_encode_tuple_header(resp, &resp_index, 2);
             ei_encode_atom(resp, &resp_index, "tm_hour");
             ei_encode_long(resp, &resp_index, ((tm *)data)->tm_hour);
             
-            ei_encode_tuple_header(resp, &resp_index, 2);
             ei_encode_atom(resp, &resp_index, "tm_mday");
             ei_encode_long(resp, &resp_index, ((tm *)data)->tm_mday);
 
-            ei_encode_tuple_header(resp, &resp_index, 2);
             ei_encode_atom(resp, &resp_index, "tm_mon");
             ei_encode_long(resp, &resp_index, ((tm *)data)->tm_mon);
             
-            ei_encode_tuple_header(resp, &resp_index, 2);
             ei_encode_atom(resp, &resp_index, "tm_year");
             ei_encode_long(resp, &resp_index, ((tm *)data)->tm_year);
             
-            ei_encode_tuple_header(resp, &resp_index, 2);
             ei_encode_atom(resp, &resp_index, "tm_wday");
             ei_encode_long(resp, &resp_index, ((tm *)data)->tm_wday);
             
-            ei_encode_tuple_header(resp, &resp_index, 2);
             ei_encode_atom(resp, &resp_index, "tm_yday");
             ei_encode_long(resp, &resp_index, ((tm *)data)->tm_yday);
 
-            ei_encode_tuple_header(resp, &resp_index, 2);
             ei_encode_atom(resp, &resp_index, "tm_isdst");
             ei_encode_long(resp, &resp_index, ((tm *)data)->tm_isdst);
-
-            ei_encode_empty_list(resp, &resp_index);
         break;
 
         case 15: //TS7Protection

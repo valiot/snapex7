@@ -2,6 +2,8 @@ defmodule Snapex7.Client do
 
   use GenServer
 
+  @c_timeout 5000
+
   @block_types [
                 OB: 0x38,
                 DB: 0x41,
@@ -171,6 +173,63 @@ defmodule Snapex7.Client do
     GenServer.call(pid, {:db_fill, db_number, fill_char})
   end
 
+  #Date/Time functions
+
+  @doc """
+  Reads PLC date and time, if successful, returns `{:ok, date, time}`
+  """
+  @spec get_plc_date_time(GenServer.server()) :: {:ok, term, term} | {:error, map}
+  def get_plc_date_time(pid) do
+    GenServer.call(pid, :get_plc_date_time)
+  end
+
+  @type plc_time_opt ::
+          {:sec, 0..59}
+          | {:min, 0..7}
+          | {:hour, 0..23}
+          | {:mday, 1..31}
+          | {:mon, 1..12}
+          | {:year, integer}
+          | {:wday, 0..6}
+          | {:yday, 0..365}
+          | {:isdst, integer}
+  @doc """
+  Sets PLC date and time.
+  The following options are available:
+
+    * `:sec` - (int) seconds afer the minute (0..59).
+
+    * `:min` - (int) minutes after the hour (0..59).
+
+    * `:hour` - (int) hour since midnight (0..23).
+
+    * `:mday` - (int) day of the month (1..31).
+
+    * `:mon` - (int) month since January (1..12).
+
+    * `:year` - (int) year (1900...).
+
+    * `:wday` - (int) days since Sunday (0..6).
+
+    * `:yday` - (int) days since January 1 (0..365).
+
+    * `:isdst` - (int) Daylight Saving Time flag.
+
+  The default is of all functions are the minimum value.
+  """
+  @spec set_plc_date_time(GenServer.server(), [plc_time_opt]) :: :ok | {:error, map}
+  def set_plc_date_time(pid, opts \\ []) do
+    GenServer.call(pid, {:set_plc_date_time, opts})
+  end
+
+  @doc """
+  Sets the PLC date and time in accord to the PC system Date/Time.
+  """
+  @spec set_plc_system_date_time(GenServer.server()) :: :ok | {:error, map}
+  def set_plc_system_date_time(pid) do
+    GenServer.call(pid, :set_plc_system_date_time)
+  end
+
   def init([]) do
     System.put_env("LD_LIBRARY_PATH", "./src") #change this to :code.priv_dir (Change Makefile)
     executable = :code.priv_dir(:snapex7) ++ '/s7_client.o'
@@ -191,7 +250,7 @@ defmodule Snapex7.Client do
   # Administrative funtions
 
   def handle_call({:connect_to, opts}, {from_pid, _}, state) do
-    ip = Keyword.get(opts, :ip, nil)
+    ip = Keyword.fetch!(opts, :ip)
     rack = Keyword.get(opts, :rack, 0)
     slot = Keyword.get(opts, :slot,  0)
     active = Keyword.get(opts, :active,  false)
@@ -277,8 +336,43 @@ defmodule Snapex7.Client do
     {:reply, response, state}
   end
 
+  #Date/Time functions
 
-  defp call_port(state, command, arguments, timeout \\ 4000) do
+  def handle_call(:get_plc_date_time, _from, state) do
+    response =
+     case call_port(state, :get_plc_date_time, nil) do
+      {:ok, tm} ->
+        {:ok, time} = Time.new(tm.tm_hour, tm.tm_min, tm.tm_sec)
+        {:ok, date} = Date.new(tm.tm_year, tm.tm_mon, tm.tm_mday)
+        {:ok, date, time}
+      x ->
+       x
+     end
+    {:reply, response, state}
+  end
+
+  def handle_call({:set_plc_date_time, opt}, _from, state) do
+    sec = Keyword.get(opt, :sec, 0)
+    min = Keyword.get(opt, :min, 0)
+    hour = Keyword.get(opt, :hour, 1)
+    mday = Keyword.get(opt, :mday, 1)
+    mon = Keyword.get(opt, :mon, 1)
+    year = Keyword.get(opt, :year, 1900)
+    wday = Keyword.get(opt, :wday, 0)
+    yday = Keyword.get(opt, :yday, 0)
+    isdst = Keyword.get(opt, :isdst, 1)
+
+    response = call_port(state, :set_plc_date_time, {sec, min, hour, mday, mon, year, wday, yday, isdst})
+
+    {:reply, response, state}
+  end
+
+  def handle_call(:set_plc_system_date_time, _from, state) do
+    response = call_port(state, :set_plc_system_date_time, nil)
+    {:reply, response, state}
+  end
+
+  defp call_port(state, command, arguments, timeout \\ @c_timeout) do
     msg = {command, arguments}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
     # Block until the response comes back since the C side
