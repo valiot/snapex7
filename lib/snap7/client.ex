@@ -275,6 +275,56 @@ defmodule Snapex7.Client do
     GenServer.call(pid, :get_cp_info)
   end
 
+  # PLC control functions
+
+  @doc """
+  Puts the CPU in RUN mode performing an HOT START.
+  """
+  @spec plc_hot_start(GenServer.server()) :: :ok | {:error, map} | {:error, :einval}
+  def plc_hot_start(pid) do
+    GenServer.call(pid, :plc_hot_start)
+  end
+
+  @doc """
+  Puts the CPU in RUN mode performing an COLD START.
+  """
+  @spec plc_cold_start(GenServer.server()) :: :ok | {:error, map} | {:error, :einval}
+  def plc_cold_start(pid) do
+    GenServer.call(pid, :plc_cold_start)
+  end
+
+  @doc """
+  Puts the CPU in STOP mode.
+  """
+  @spec plc_stop(GenServer.server()) :: :ok | {:error, map} | {:error, :einval}
+  def plc_stop(pid) do
+    GenServer.call(pid, :plc_stop)
+  end
+
+  @doc """
+  Performs the copy ram to rom action. (CPU must be in STOP mode)
+  """
+  @spec copy_ram_to_rom(GenServer.server(), integer) :: :ok | {:error, map} | {:error, :einval}
+  def copy_ram_to_rom(pid, timeout \\ 1000) do
+    GenServer.call(pid, {:copy_ram_to_rom, timeout})
+  end
+
+  @doc """
+  Performas the Memory compress action (not all CPU's supports this function and the CPU must be in STOP mode).
+  """
+  @spec compress(GenServer.server(), integer) :: :ok | {:error, map} | {:error, :einval}
+  def compress(pid, timeout \\ 1000) do
+    GenServer.call(pid, {:compress, timeout})
+  end
+
+  @doc """
+  Returns the CPU status (running/stoppped).
+  """
+  @spec get_plc_status(GenServer.server()) :: :ok | {:error, map} | {:error, :einval}
+  def get_plc_status(pid) do
+    GenServer.call(pid, :get_plc_status)
+  end
+
 
   def init([]) do
     System.put_env("LD_LIBRARY_PATH", "./src") #change this to :code.priv_dir (Change Makefile)
@@ -445,7 +495,37 @@ defmodule Snapex7.Client do
     {:reply, response, state}
   end
 
+  # PLC control functions
 
+  def handle_call(:plc_hot_start, _from, state) do
+    response = call_port(state, :plc_hot_start, nil)
+    {:reply, response, state}
+  end
+
+  def handle_call(:plc_cold_start, _from, state) do
+    response = call_port(state, :plc_cold_start, nil)
+    {:reply, response, state}
+  end
+
+  def handle_call(:plc_stop, _from, state) do
+    response = call_port(state, :plc_stop, nil)
+    {:reply, response, state}
+  end
+
+  def handle_call({:copy_ram_to_rom, timeout}, _from, state) do
+    response = call_port(state, :copy_ram_to_rom, timeout)
+    {:reply, response, state}
+  end
+
+  def handle_call({:compress, timeout}, _from, state) do
+    response = call_port(state, :compress, timeout)
+    {:reply, response, state}
+  end
+
+  def handle_call(:get_plc_status, _from, state) do
+    response = call_port(state, :get_plc_status, nil)
+    {:reply, response, state}
+  end
 
 
   defp call_port(state, command, arguments, timeout \\ @c_timeout) do
