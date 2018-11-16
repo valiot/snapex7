@@ -37,7 +37,7 @@ defmodule Snapex7.Client do
   @doc """
   Start up a Snap7 Client GenServer.
   """
-  @spec start_link([term]) :: {:ok, pid} | {:error, term}
+  @spec start_link([term]) :: {:ok, pid} | {:error, term} | {:error,:einval}
   def start_link(opts \\ []) do
     GenServer.start_link(__MODULE__, [], opts)
   end
@@ -72,7 +72,7 @@ defmodule Snapex7.Client do
 
   For more info see pg. 96 form Snap7 docs.
   """
-  @spec connect_to(GenServer.server(), [connect_opt]) :: :ok  | {:error, map()}
+  @spec connect_to(GenServer.server(), [connect_opt]) :: :ok  | {:error, map()} | {:error, :einval}
   def connect_to(pid, opts \\ []) do
     GenServer.call(pid, {:connect_to, opts})
   end
@@ -82,7 +82,7 @@ defmodule Snapex7.Client do
   @doc """
   This function returns the AG blocks amount divided by type.
   """
-  @spec list_blocks(GenServer.server()) :: {:ok, list}  | {:error, map()}
+  @spec list_blocks(GenServer.server()) :: {:ok, list}  | {:error, map()} | {:error, :einval}
   def list_blocks(pid)  do
     GenServer.call(pid, :list_blocks)
   end
@@ -90,7 +90,7 @@ defmodule Snapex7.Client do
   @doc """
   This function returns the AG list of a specified block type.
   """
-  @spec list_blocks_of_type(GenServer.server(), atom(), integer()) :: {:ok, list}  | {:error, map}
+  @spec list_blocks_of_type(GenServer.server(), atom(), integer()) :: {:ok, list}  | {:error, map} | {:error, :einval}
   def list_blocks_of_type(pid, block_type, n_items) do
     GenServer.call(pid, {:list_blocks_of_type, block_type, n_items})
   end
@@ -100,7 +100,7 @@ defmodule Snapex7.Client do
   This function is very useful if you nead to read or write data in a DB
   which you do not know the size in advance (see pg 127).
   """
-  @spec get_ag_block_info(GenServer.server(), atom(), integer()) :: {:ok, list}  | {:error, map}
+  @spec get_ag_block_info(GenServer.server(), atom(), integer()) :: {:ok, list}  | {:error, map} | {:error, :einval}
   def get_ag_block_info(pid, block_type, block_num) do
     GenServer.call(pid, {:get_ag_block_info, block_type, block_num})
   end
@@ -111,7 +111,7 @@ defmodule Snapex7.Client do
   An uploaded a block saved to disk, could be loaded in a user buffer
   and checked with this function.
   """
-  @spec get_pg_block_info(GenServer.server(), binary()) :: {:ok, list}  | {:error, map}
+  @spec get_pg_block_info(GenServer.server(), binary()) :: {:ok, list}  | {:error, map} | {:error,:einval}
   def get_pg_block_info(pid, buffer) do
     GenServer.call(pid, {:get_pg_block_info, buffer})
   end
@@ -122,7 +122,7 @@ defmodule Snapex7.Client do
   Uploads a block from AG. (gets a block from PLC)
   The whole block (including header and footer) is copied into the user buffer (as bytes).
   """
-  @spec full_upload(GenServer.server(), atom(), integer(), integer()) :: {:ok, binary}  | {:error, map}
+  @spec full_upload(GenServer.server(), atom(), integer(), integer()) :: {:ok, binary}  | {:error, map} | {:error, :einval}
   def full_upload(pid, block_type, block_num, bytes2read) do
     GenServer.call(pid, {:full_upload, block_type, block_num, bytes2read})
   end
@@ -131,7 +131,7 @@ defmodule Snapex7.Client do
   Uploads a block from AG. (gets a block from PLC)
   Only the block body (but header and footer) is copied into the user buffer (as bytes).
   """
-  @spec upload(GenServer.server(), atom(), integer(), integer()) :: {:ok, binary}  | {:error, map}
+  @spec upload(GenServer.server(), atom(), integer(), integer()) :: {:ok, binary}  | {:error, map} | {:error, :einval}
   def upload(pid, block_type, block_num, bytes2read) do
     GenServer.call(pid, {:upload, block_type, block_num, bytes2read})
   end
@@ -140,7 +140,7 @@ defmodule Snapex7.Client do
   Downloads a block from AG. (gets a block from PLC)
   The whole block (including header and footer) must be available into the user buffer.
   """
-  @spec download(GenServer.server(), integer(), binary()) :: :ok | {:error, map}
+  @spec download(GenServer.server(), integer(), binary()) :: :ok | {:error, map} | {:error, :einval}
   def download(pid, block_num, buffer) do
     GenServer.call(pid, {:download, block_num, buffer})
   end
@@ -149,7 +149,7 @@ defmodule Snapex7.Client do
   Deletes a block from AG.
   (There is an undo function available).
   """
-  @spec delete(GenServer.server(), atom(), integer()) :: :ok | {:error, map}
+  @spec delete(GenServer.server(), atom(), integer()) :: :ok | {:error, map} | {:error, :einval}
   def delete(pid, block_type, block_num) do
     GenServer.call(pid, {:delete, block_type, block_num})
   end
@@ -160,7 +160,7 @@ defmodule Snapex7.Client do
   different approach so it's  not subject to the security level set.
   Only data is uploaded.
   """
-  @spec db_get(GenServer.server(), integer(), integer()) :: {:ok, list} | {:error, map}
+  @spec db_get(GenServer.server(), integer(), integer()) :: {:ok, list} | {:error, map} | {:error, :einval}
   def db_get(pid, db_number, size \\ 65536) do
     GenServer.call(pid, {:db_get, db_number, size})
   end
@@ -168,7 +168,7 @@ defmodule Snapex7.Client do
   @doc """
   Fills a DB in AG qirh a given byte without the need of specifying its size.
   """
-  @spec db_fill(GenServer.server(), integer(), integer()) :: {:ok, list} | {:error, map}
+  @spec db_fill(GenServer.server(), integer(), integer()) :: {:ok, list} | {:error, map} | {:error, :einval}
   def db_fill(pid, db_number, fill_char) do
     GenServer.call(pid, {:db_fill, db_number, fill_char})
   end
@@ -178,7 +178,7 @@ defmodule Snapex7.Client do
   @doc """
   Reads PLC date and time, if successful, returns `{:ok, date, time}`
   """
-  @spec get_plc_date_time(GenServer.server()) :: {:ok, term, term} | {:error, map}
+  @spec get_plc_date_time(GenServer.server()) :: {:ok, term, term} | {:error, map} | {:error, :einval}
   def get_plc_date_time(pid) do
     GenServer.call(pid, :get_plc_date_time)
   end
@@ -217,7 +217,7 @@ defmodule Snapex7.Client do
 
   The default is of all functions are the minimum value.
   """
-  @spec set_plc_date_time(GenServer.server(), [plc_time_opt]) :: :ok | {:error, map}
+  @spec set_plc_date_time(GenServer.server(), [plc_time_opt]) :: :ok | {:error, map} | {:error, :einval}
   def set_plc_date_time(pid, opts \\ []) do
     GenServer.call(pid, {:set_plc_date_time, opts})
   end
@@ -225,10 +225,56 @@ defmodule Snapex7.Client do
   @doc """
   Sets the PLC date and time in accord to the PC system Date/Time.
   """
-  @spec set_plc_system_date_time(GenServer.server()) :: :ok | {:error, map}
+  @spec set_plc_system_date_time(GenServer.server()) :: :ok | {:error, map} | {:error, :einval}
   def set_plc_system_date_time(pid) do
     GenServer.call(pid, :set_plc_system_date_time)
   end
+
+  # System info functions
+
+  @doc """
+  Reads a partial list of given ID and INDEX
+  See System Software for S7-300/400 System and Standard Functions
+  Volume 1 and Volume 2 for ID and INDEX info (chapter 13.3), look for
+  TIA Portal Information Systems for DR data type.
+  """
+  @spec read_szl(GenServer.server(), integer, integer) :: {:ok, binary} | {:error, map} | {:error, :einval}
+  def read_szl(pid, id, index) do
+    GenServer.call(pid, {:read_szl, id, index})
+  end
+
+  @doc """
+  Reads the directory of the partial list
+  """
+  @spec read_szl_list(GenServer.server()) :: {:ok, list} | {:error, map} | {:error, :einval}
+  def read_szl_list(pid) do
+    GenServer.call(pid, :read_szl_list)
+  end
+
+  @doc """
+  Gets CPU order code and version info.
+  """
+  @spec get_order_code(GenServer.server()) :: {:ok, list} | {:error, map} | {:error, :einval}
+  def get_order_code(pid) do
+    GenServer.call(pid, :get_order_code)
+  end
+
+  @doc """
+  Gets CPU module name, serial number and other info.
+  """
+  @spec get_cpu_info(GenServer.server()) :: {:ok, list} | {:error, map} | {:error, :einval}
+  def get_cpu_info(pid) do
+    GenServer.call(pid, :get_cpu_info)
+  end
+
+  @doc """
+  Gets CP (communication processor) info.
+  """
+  @spec get_cp_info(GenServer.server()) :: {:ok, list} | {:error, map} | {:error, :einval}
+  def get_cp_info(pid) do
+    GenServer.call(pid, :get_cp_info)
+  end
+
 
   def init([]) do
     System.put_env("LD_LIBRARY_PATH", "./src") #change this to :code.priv_dir (Change Makefile)
@@ -371,6 +417,36 @@ defmodule Snapex7.Client do
     response = call_port(state, :set_plc_system_date_time, nil)
     {:reply, response, state}
   end
+
+  # System info functions
+
+  def handle_call({:read_szl, id, index}, _from, state) do
+    response = call_port(state, :read_szl, {id, index})
+    {:reply, response, state}
+  end
+
+  def handle_call(:read_szl_list, _from, state) do
+    response = call_port(state, :read_szl_list, nil)
+    {:reply, response, state}
+  end
+
+  def handle_call(:get_order_code, _from, state) do
+    response = call_port(state, :get_order_code, nil)
+    {:reply, response, state}
+  end
+
+  def handle_call(:get_cpu_info, _from, state) do
+    response = call_port(state, :get_cpu_info, nil)
+    {:reply, response, state}
+  end
+
+  def handle_call(:get_cp_info, _from, state) do
+    response = call_port(state, :get_cp_info, nil)
+    {:reply, response, state}
+  end
+
+
+
 
   defp call_port(state, command, arguments, timeout \\ @c_timeout) do
     msg = {command, arguments}
