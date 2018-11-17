@@ -351,6 +351,15 @@ defmodule Snapex7.Client do
     GenServer.call(pid, :get_protection)
   end
 
+  # Low level funcctions
+
+  @doc """
+  Exchanges a given S7 PDU (protocol data unit) with the CPU.
+  """
+  @spec iso_exchange_buffer(GenServer.server(), binary) :: :ok | {:error, map} | {:error, :einval}
+  def iso_exchange_buffer(pid, buffer) do
+    GenServer.call(pid, {:iso_exchange_buffer, buffer})
+  end
 
 
   @spec init([]) :: {:ok, Snapex7.Client.State.t()}
@@ -569,6 +578,14 @@ defmodule Snapex7.Client do
 
   def handle_call(:get_protection, _from, state) do
     response = call_port(state, :get_protection, nil)
+    {:reply, response, state}
+  end
+
+  # Low Level functions
+
+  def handle_call({:iso_exchange_buffer, buffer}, _from, state) do
+    b_size = byte_size(buffer)
+    response = call_port(state, :iso_exchange_buffer, {b_size, buffer})
     {:reply, response, state}
   end
 
