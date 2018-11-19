@@ -351,7 +351,7 @@ defmodule Snapex7.Client do
     GenServer.call(pid, :get_protection)
   end
 
-  # Low level funcctions
+  # Low level functions
 
   @doc """
   Exchanges a given S7 PDU (protocol data unit) with the CPU.
@@ -360,6 +360,41 @@ defmodule Snapex7.Client do
   def iso_exchange_buffer(pid, buffer) do
     GenServer.call(pid, {:iso_exchange_buffer, buffer})
   end
+
+  # Miscellaneous functions
+
+  @doc """
+  Returns the last job execution time in miliseconds.
+  """
+  @spec get_exec_time(GenServer.server()) :: {:ok, integer} | {:error, map} | {:error, :einval}
+  def get_exec_time(pid) do
+    GenServer.call(pid, :get_exec_time)
+  end
+
+  @doc """
+  Returns the last job result.
+  """
+  @spec get_last_error(GenServer.server()) :: {:ok, map} | {:error, map} | {:error, :einval}
+  def get_last_error(pid) do
+    GenServer.call(pid, :get_last_error)
+  end
+
+  @doc """
+  Returns info about the PDU length.
+  """
+  @spec get_pdu_length(GenServer.server()) :: {:ok, list} | {:error, map} | {:error, :einval}
+  def get_pdu_length(pid) do
+    GenServer.call(pid, :get_pdu_length)
+  end
+
+  @doc """
+  Returns the connection status.
+  """
+  @spec get_connected(GenServer.server()) :: {:ok, boolean} | {:error, map} | {:error, :einval}
+  def get_connected(pid) do
+    GenServer.call(pid, :get_connected)
+  end
+
 
 
   @spec init([]) :: {:ok, Snapex7.Client.State.t()}
@@ -469,7 +504,7 @@ defmodule Snapex7.Client do
     {:reply, response, state}
   end
 
-  #Date/Time functions
+  # Date/Time functions
 
   def handle_call(:get_plc_date_time, _from, state) do
     response =
@@ -588,6 +623,29 @@ defmodule Snapex7.Client do
     response = call_port(state, :iso_exchange_buffer, {b_size, buffer})
     {:reply, response, state}
   end
+
+  # Miscellaneous functions
+
+  def handle_call(:get_exec_time, _from, state) do
+    response = call_port(state, :get_exec_time, nil)
+    {:reply, response, state}
+  end
+
+  def handle_call(:get_last_error, _from, state) do
+    response = call_port(state, :get_last_error, nil)
+    {:reply, response, state}
+  end
+
+  def handle_call(:get_pdu_length, _from, state) do
+    response = call_port(state, :get_pdu_length, nil)
+    {:reply, response, state}
+  end
+
+  def handle_call(:get_connected, _from, state) do
+    response = call_port(state, :get_connected, nil)
+    {:reply, response, state}
+  end
+
 
   defp call_port(state, command, arguments, timeout \\ @c_timeout) do
     msg = {command, arguments}
