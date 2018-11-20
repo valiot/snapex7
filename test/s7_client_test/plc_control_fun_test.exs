@@ -14,7 +14,9 @@ defmodule PlcControlFunTest do
     case state.status do
       :connected ->
         resp = Snapex7.Client.plc_hot_start(state.pid)
-        assert resp == {:error, %{eiso: nil, es7: :errCliCannotStartPLC, etcp: nil}} #when PLC is running
+        # when PLC is running
+        assert resp == {:error, %{eiso: nil, es7: :errCliCannotStartPLC, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -24,7 +26,9 @@ defmodule PlcControlFunTest do
     case state.status do
       :connected ->
         resp = Snapex7.Client.plc_cold_start(state.pid)
-        assert resp == {:error, %{eiso: nil, es7: :errCliCannotStartPLC, etcp: nil}} #when PLC is running
+        # when PLC is running
+        assert resp == {:error, %{eiso: nil, es7: :errCliCannotStartPLC, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -34,7 +38,9 @@ defmodule PlcControlFunTest do
     case state.status do
       :connected ->
         resp = Snapex7.Client.plc_stop(state.pid)
-        assert resp == {:error, %{eiso: nil, es7: :errCliCannotStopPLC, etcp: nil}} #when PLC is running
+        # when PLC is running
+        assert resp == {:error, %{eiso: nil, es7: :errCliCannotStopPLC, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -44,7 +50,9 @@ defmodule PlcControlFunTest do
     case state.status do
       :connected ->
         resp = Snapex7.Client.copy_ram_to_rom(state.pid)
-        assert resp == {:error, %{eiso: nil, es7: :errCliCannotCopyRamToRom, etcp: nil}} #when PLC is running
+        # when PLC is running
+        assert resp == {:error, %{eiso: nil, es7: :errCliCannotCopyRamToRom, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -54,7 +62,9 @@ defmodule PlcControlFunTest do
     case state.status do
       :connected ->
         resp = Snapex7.Client.compress(state.pid, 300)
-        assert resp == {:error, %{eiso: nil, es7: :errCliCannotCompress, etcp: nil}} #when PLC is running
+        # when PLC is running
+        assert resp == {:error, %{eiso: nil, es7: :errCliCannotCompress, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -64,7 +74,9 @@ defmodule PlcControlFunTest do
     case state.status do
       :connected ->
         resp = Snapex7.Client.get_plc_status(state.pid)
-        assert resp == {:ok, :S7CpuStatusRun} #when the PLC is running
+        # when the PLC is running
+        assert resp == {:ok, :S7CpuStatusRun}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end

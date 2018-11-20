@@ -13,6 +13,7 @@ byte DB1[20]; // byte is a portable type of snap7.h
 byte DB2[20]; // byte is a portable type of snap7.h
 byte MyAB32[256]; // byte is a portable type of snap7.h
 byte MyEB32[256]; // byte is a portable type of snap7.h
+int MyTM32[256]; // byte is a portable type of snap7.h
 float f = 123.45;
 byte* bytes = (byte*)&f;
 S7Object Server;
@@ -70,6 +71,10 @@ int main()
     result = Cli_WriteArea(Client, S7AreaDB, 1, 2, 4, S7WLByte, &MyDB32);
     printf("r = %d\n", result);
 
+    MyDB32[0] = 0x00;
+    MyDB32[1] = 0x00;
+    MyDB32[2] = 0x00;
+    MyDB32[3] = 0x00;
     Cli_ReadArea(Client, S7AreaDB, 1, 2, 4, S7WLByte, &MyDB32);
     printf("0x");
     printf("%02x", MyDB32[0]);
@@ -80,6 +85,16 @@ int main()
     MyDB32[1] = 0xca;
     result = Cli_WriteArea(Client, S7AreaDB, 1, 2, 1, S7WLWord, &MyDB32);
     printf("r = %d\n", result);
+
+    printf("Read/writeVars test-----------------------------\n");
+
+    printf("S7WLWord test-----------------------------\n");
+    Cli_ReadArea(Client, S7AreaDB, 1, 2, 2, S7WLWord, &MyDB32);
+    printf("0x");
+    printf("%02x", MyDB32[0]);
+    printf("%02x", MyDB32[1]);
+    printf("%02x", MyDB32[2]);
+    printf("%02x\n", MyDB32[3]);
 
     printf("Read/writeVars test-----------------------------\n");
     Cli_ABRead(Client, 0, 1, &MyAB32);
@@ -111,9 +126,19 @@ int main()
     printf("%02x", MyEB32[0]);
     printf("\n");
 
-    // print("%02x", MyDB32[1]);
-    // printf("%02x", MyDB32[2]);
-    // printf("%02x\n", MyDB32[3]);
+    printf("TM_Read test-----------------------------\n");
+    result = Cli_TMRead(Client, 0, 1, &MyTM32);
+    printf("r = %d\n", result);
+    printf("%02x", MyTM32[0]);
+    printf("%02x", MyTM32[1]);
+    printf("\n");
+
+    printf("CT_Read test-----------------------------\n");
+    result = Cli_CTRead(Client, 0, 1, &MyTM32);
+    printf("r = %d\n", result);
+    printf("%02x", MyTM32[0]);
+    printf("%02x", MyTM32[1]);
+    printf("\n");
 
     //ReadmultiVars Test
     printf("ReadMultiVars test-----------------------------\n");

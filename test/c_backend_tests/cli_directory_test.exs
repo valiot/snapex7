@@ -2,23 +2,33 @@ defmodule CliDirectoryTest do
   use ExUnit.Case
   doctest Snapex7
 
-   # We need to implement S7 Server behavior in order to make a proper tests.
-   # we have a PLC that doesn't supports these functions (S7-1200).
+  # We need to implement S7 Server behavior in order to make a proper tests.
+  # we have a PLC that doesn't supports these functions (S7-1200).
 
   setup do
-    System.put_env("LD_LIBRARY_PATH", "./src") #checar como cambiar esto para que use :code.priv_dir
+    # checar como cambiar esto para que use :code.priv_dir
+    System.put_env("LD_LIBRARY_PATH", "./src")
     executable = :code.priv_dir(:snapex7) ++ '/s7_client.o'
-    port =  Port.open({:spawn_executable, executable}, [{:args, []}, {:packet, 2}, :use_stdio, :binary, :exit_status])
+
+    port =
+      Port.open({:spawn_executable, executable}, [
+        {:args, []},
+        {:packet, 2},
+        :use_stdio,
+        :binary,
+        :exit_status
+      ])
 
     msg = {:connect_to, {"192.168.0.1", 0, 1}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
     status =
       receive do
-        {_, {:data, <<?r, response::binary>>}}  ->
+        {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
-        after
-          10000  ->
-            :error
+      after
+        10000 ->
+          :error
       end
 
     %{port: port, status: status}
@@ -34,6 +44,7 @@ defmodule CliDirectoryTest do
           receive do
             {_, {:data, <<?r, response::binary>>}} ->
               :erlang.binary_to_term(response)
+
             x ->
               IO.inspect(x)
               :error
@@ -43,14 +54,14 @@ defmodule CliDirectoryTest do
               exit(:port_timed_out)
           end
 
-        assert c_response ==  {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+        assert c_response == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
+  end
 
-   end
-
-   test "handler_list_blocks_of_type", state do
+  test "handler_list_blocks_of_type", state do
     case state.status do
       :ok ->
         msg = {:list_blocks_of_type, {0x38, 2}}
@@ -60,6 +71,7 @@ defmodule CliDirectoryTest do
           receive do
             {_, {:data, <<?r, response::binary>>}} ->
               :erlang.binary_to_term(response)
+
             x ->
               IO.inspect(x)
               :error
@@ -70,9 +82,10 @@ defmodule CliDirectoryTest do
           end
 
         assert c_response == {:error, %{eiso: nil, es7: :errCliItemNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
-      end
+    end
   end
 
   test "handler_get_ag_block_info test", state do
@@ -85,6 +98,7 @@ defmodule CliDirectoryTest do
           receive do
             {_, {:data, <<?r, response::binary>>}} ->
               :erlang.binary_to_term(response)
+
             x ->
               IO.inspect(x)
               :error
@@ -94,9 +108,10 @@ defmodule CliDirectoryTest do
               exit(:port_timed_out)
           end
 
-        assert c_response ==  {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+        assert c_response == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
-          IO.puts("(#{__MODULE__}) Not connected")
+        IO.puts("(#{__MODULE__}) Not connected")
     end
   end
 
@@ -110,6 +125,7 @@ defmodule CliDirectoryTest do
           receive do
             {_, {:data, <<?r, response::binary>>}} ->
               :erlang.binary_to_term(response)
+
             x ->
               IO.inspect(x)
               :error
@@ -120,10 +136,9 @@ defmodule CliDirectoryTest do
           end
 
         assert c_response == {:error, %{eiso: nil, es7: :errCliInvalidBlockSize, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
-
   end
-
 end

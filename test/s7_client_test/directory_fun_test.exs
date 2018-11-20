@@ -15,6 +15,7 @@ defmodule DirectoryFunTest do
       :connected ->
         resp = Snapex7.Client.list_blocks(state.pid)
         assert resp == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -25,6 +26,7 @@ defmodule DirectoryFunTest do
       :connected ->
         resp = Snapex7.Client.list_blocks_of_type(state.pid, :OB, 2)
         assert resp == {:error, %{eiso: nil, es7: :errCliItemNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -35,6 +37,7 @@ defmodule DirectoryFunTest do
       :connected ->
         resp = Snapex7.Client.get_ag_block_info(state.pid, :OB, 2)
         assert resp == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -45,6 +48,7 @@ defmodule DirectoryFunTest do
       :connected ->
         resp = Snapex7.Client.get_pg_block_info(state.pid, <<0x01, 0x02, 0x03>>)
         assert resp == {:error, %{eiso: nil, es7: :errCliInvalidBlockSize, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end

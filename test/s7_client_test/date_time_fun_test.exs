@@ -15,6 +15,7 @@ defmodule DateTimeFunTest do
       :connected ->
         resp = Snapex7.Client.get_plc_date_time(state.pid)
         assert resp == {:error, %{eiso: nil, es7: :errCliItemNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -23,17 +24,21 @@ defmodule DateTimeFunTest do
   test "set_plc_date_time function", state do
     case state.status do
       :connected ->
-        resp = Snapex7.Client.set_plc_date_time(state.pid,
-                                                    sec: 20,
-                                                    min: 59,
-                                                    hour: 23,
-                                                    mday: 23,
-                                                    mon: 12,
-                                                    year: 1990,
-                                                    wday: 3,
-                                                    yday: 320,
-                                                    isdst: 1)
+        resp =
+          Snapex7.Client.set_plc_date_time(state.pid,
+            sec: 20,
+            min: 59,
+            hour: 23,
+            mday: 23,
+            mon: 12,
+            year: 1990,
+            wday: 3,
+            yday: 320,
+            isdst: 1
+          )
+
         assert resp == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -44,6 +49,7 @@ defmodule DateTimeFunTest do
       :connected ->
         resp = Snapex7.Client.set_plc_system_date_time(state.pid)
         assert resp == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end

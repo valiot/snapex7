@@ -5,19 +5,29 @@ defmodule CliPlcControlTest do
   # (we've a plc s7-1200 and snap7 server doesn't support these functions)
   # These tests only help us to track the input variables.
   setup do
-    System.put_env("LD_LIBRARY_PATH", "./src") #checar como cambiar esto para que use :code.priv_dir
+    # checar como cambiar esto para que use :code.priv_dir
+    System.put_env("LD_LIBRARY_PATH", "./src")
     executable = :code.priv_dir(:snapex7) ++ '/s7_client.o'
-    port =  Port.open({:spawn_executable, executable}, [{:args, []}, {:packet, 2}, :use_stdio, :binary, :exit_status])
+
+    port =
+      Port.open({:spawn_executable, executable}, [
+        {:args, []},
+        {:packet, 2},
+        :use_stdio,
+        :binary,
+        :exit_status
+      ])
 
     msg = {:connect_to, {"192.168.0.1", 0, 1}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
     status =
       receive do
-        {_, {:data, <<?r, response::binary>>}}  ->
+        {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
-        after
-          10000  ->
-            :error
+      after
+        10000 ->
+          :error
       end
 
     %{port: port, status: status}
@@ -26,13 +36,15 @@ defmodule CliPlcControlTest do
   test "handle_plc_hot_start", state do
     case state.status do
       :ok ->
-        msg = {:plc_hot_start, nil} #NA
+        # NA
+        msg = {:plc_hot_start, nil}
         send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
         c_response =
           receive do
             {_, {:data, <<?r, response::binary>>}} ->
               :erlang.binary_to_term(response)
+
             x ->
               IO.inspect(x)
               :error
@@ -42,7 +54,9 @@ defmodule CliPlcControlTest do
               exit(:port_timed_out)
           end
 
-        assert c_response == {:error, %{eiso: nil, es7: :errCliCannotStartPLC, etcp: nil}} #when PLC is running
+        # when PLC is running
+        assert c_response == {:error, %{eiso: nil, es7: :errCliCannotStartPLC, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -51,13 +65,15 @@ defmodule CliPlcControlTest do
   test "handle_plc_cold_start", state do
     case state.status do
       :ok ->
-        msg = {:plc_cold_start, nil} #NA
+        # NA
+        msg = {:plc_cold_start, nil}
         send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
         c_response =
           receive do
             {_, {:data, <<?r, response::binary>>}} ->
               :erlang.binary_to_term(response)
+
             x ->
               IO.inspect(x)
               :error
@@ -67,7 +83,9 @@ defmodule CliPlcControlTest do
               exit(:port_timed_out)
           end
 
-        assert c_response ==  {:error, %{eiso: nil, es7: :errCliCannotStartPLC, etcp: nil}} #when PLC is running
+        # when PLC is running
+        assert c_response == {:error, %{eiso: nil, es7: :errCliCannotStartPLC, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -76,13 +94,15 @@ defmodule CliPlcControlTest do
   test "handle_plc_stop", state do
     case state.status do
       :ok ->
-        msg = {:plc_stop, nil} #NA
+        # NA
+        msg = {:plc_stop, nil}
         send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
         c_response =
           receive do
             {_, {:data, <<?r, response::binary>>}} ->
               :erlang.binary_to_term(response)
+
             x ->
               IO.inspect(x)
               :error
@@ -92,7 +112,9 @@ defmodule CliPlcControlTest do
               exit(:port_timed_out)
           end
 
-        assert c_response == {:error, %{eiso: nil, es7: :errCliCannotStopPLC, etcp: nil}} #PLC s7-1200 cannot be stopped
+        # PLC s7-1200 cannot be stopped
+        assert c_response == {:error, %{eiso: nil, es7: :errCliCannotStopPLC, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -101,13 +123,15 @@ defmodule CliPlcControlTest do
   test "handle_copy_ram_to_rom", state do
     case state.status do
       :ok ->
-        msg = {:copy_ram_to_rom, 300} #timeout
+        # timeout
+        msg = {:copy_ram_to_rom, 300}
         send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
         c_response =
           receive do
             {_, {:data, <<?r, response::binary>>}} ->
               :erlang.binary_to_term(response)
+
             x ->
               IO.inspect(x)
               :error
@@ -117,7 +141,9 @@ defmodule CliPlcControlTest do
               exit(:port_timed_out)
           end
 
-        assert c_response == {:error, %{eiso: nil, es7: :errCliCannotCopyRamToRom, etcp: nil}} #when PLC is running
+        # when PLC is running
+        assert c_response == {:error, %{eiso: nil, es7: :errCliCannotCopyRamToRom, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -126,13 +152,15 @@ defmodule CliPlcControlTest do
   test "handle_compress", state do
     case state.status do
       :ok ->
-        msg = {:compress, 300} #timeout
+        # timeout
+        msg = {:compress, 300}
         send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
         c_response =
           receive do
             {_, {:data, <<?r, response::binary>>}} ->
               :erlang.binary_to_term(response)
+
             x ->
               IO.inspect(x)
               :error
@@ -142,7 +170,9 @@ defmodule CliPlcControlTest do
               exit(:port_timed_out)
           end
 
-        assert c_response == {:error, %{eiso: nil, es7: :errCliCannotCompress, etcp: nil}} #when the PLC is runnig
+        # when the PLC is runnig
+        assert c_response == {:error, %{eiso: nil, es7: :errCliCannotCompress, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -151,13 +181,15 @@ defmodule CliPlcControlTest do
   test "handle_get_plc_status", state do
     case state.status do
       :ok ->
-        msg = {:get_plc_status, nil} #NA
+        # NA
+        msg = {:get_plc_status, nil}
         send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
         c_response =
           receive do
             {_, {:data, <<?r, response::binary>>}} ->
               :erlang.binary_to_term(response)
+
             x ->
               IO.inspect(x)
               :error
@@ -167,7 +199,9 @@ defmodule CliPlcControlTest do
               exit(:port_timed_out)
           end
 
-        assert c_response == {:ok, :S7CpuStatusRun} #when the PLC is running
+        # when the PLC is running
+        assert c_response == {:ok, :S7CpuStatusRun}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
