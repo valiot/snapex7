@@ -1,18 +1,23 @@
 defmodule Snapex7.Client do
-
   use GenServer
 
   @c_timeout 5000
 
   @block_types [
-                OB: 0x38,
-                DB: 0x41,
-                SDB: 0x42,
-                FC: 0x43,
-                SFC: 0x44,
-                FB: 0x45,
-                SFB: 0x46
-              ]
+    OB: 0x38,
+    DB: 0x41,
+    SDB: 0x42,
+    FC: 0x43,
+    SFC: 0x44,
+    FB: 0x45,
+    SFB: 0x46
+  ]
+
+  @connection_types [
+    PG: 0x01,
+    OP: 0x02,
+    S7_basic: 0x03
+  ]
 
   defmodule State do
     @moduledoc false
@@ -56,6 +61,8 @@ defmodule Snapex7.Client do
           {:ip, binary}
           | {:rack, 0..7}
           | {:slot, 1..31}
+          | {:local_tsap, integer}
+          | {:remote_tsap, integer}
 
   @doc """
   Connect to a S7 server.
@@ -72,9 +79,69 @@ defmodule Snapex7.Client do
 
   For more info see pg. 96 form Snap7 docs.
   """
-  @spec connect_to(GenServer.server(), [connect_opt]) :: :ok  | {:error, map()} | {:error, :einval}
+  @spec connect_to(GenServer.server(), [connect_opt]) :: :ok | {:error, map()} | {:error, :einval}
   def connect_to(pid, opts \\ []) do
     GenServer.call(pid, {:connect_to, opts})
+  end
+
+  @doc """
+  Sets the connection resource type, i.e the way in which the Clients connects to a PLC.
+  """
+  @spec set_connection_type(GenServer.server(), atom()) ::
+          :ok | {:error, map()} | {:error, :einval}
+  def set_connection_type(pid, connection_type) do
+    GenServer.call(pid, {:set_connection_type, connection_type})
+  end
+
+  @doc """
+  Sets internally (IP, LocalTSAP, RemoteTSAP) Coordinates
+  The following options are available:
+
+    * `:ip` - (string) PLC/Equipment IPV4 Address (e.g., "192.168.0.1")
+
+    * `:local_tsap` - (int) Local TSAP (PC TSAP) // 0.
+
+    * `:remote_tsap` - (int) Remote TSAP (PLC TSAP) // 0.
+  """
+  @spec set_connection_params(GenServer.server(), [connect_opt]) ::
+          :ok | {:error, map()} | {:error, :einval}
+  def set_connection_params(pid, opts \\ []) do
+    GenServer.call(pid, {:set_connection_params, opts})
+  end
+
+  @doc """
+  Connects the client to the PLC with the parameters specified in the previous call of
+  `connect_to/2` or `set_connection_params/2`.
+  """
+  @spec connect(GenServer.server()) :: :ok | {:error, map()} | {:error, :einval}
+  def connect(pid) do
+    GenServer.call(pid, :connect)
+  end
+
+  @doc """
+  Disconnects “gracefully” the Client from the PLC.
+  """
+  @spec disconnect(GenServer.server()) :: :ok | {:error, map()} | {:error, :einval}
+  def disconnect(pid) do
+    GenServer.call(pid, :disconnect)
+  end
+
+  @doc """
+  Reads an internal Client object parameter.
+  For more info see pg. 89 form Snap7 docs.
+  """
+  @spec get_params(GenServer.server(), integer()) :: :ok | {:error, map()} | {:error, :einval}
+  def get_params(pid, param_number) do
+    GenServer.call(pid, {:get_params, param_number})
+  end
+
+  @doc """
+  Sets an internal Client object parameter.
+  """
+  @spec set_params(GenServer.server(), integer(), integer()) ::
+          :ok | {:error, map()} | {:error, :einval}
+  def set_params(pid, param_number, value) do
+    GenServer.call(pid, {:set_params, param_number, value})
   end
 
   # Directory functions
@@ -82,15 +149,16 @@ defmodule Snapex7.Client do
   @doc """
   This function returns the AG blocks amount divided by type.
   """
-  @spec list_blocks(GenServer.server()) :: {:ok, list}  | {:error, map()} | {:error, :einval}
-  def list_blocks(pid)  do
+  @spec list_blocks(GenServer.server()) :: {:ok, list} | {:error, map()} | {:error, :einval}
+  def list_blocks(pid) do
     GenServer.call(pid, :list_blocks)
   end
 
   @doc """
   This function returns the AG list of a specified block type.
   """
-  @spec list_blocks_of_type(GenServer.server(), atom(), integer()) :: {:ok, list}  | {:error, map} | {:error, :einval}
+  @spec list_blocks_of_type(GenServer.server(), atom(), integer()) ::
+          {:ok, list} | {:error, map} | {:error, :einval}
   def list_blocks_of_type(pid, block_type, n_items) do
     GenServer.call(pid, {:list_blocks_of_type, block_type, n_items})
   end
@@ -351,7 +419,7 @@ defmodule Snapex7.Client do
     GenServer.call(pid, :get_protection)
   end
 
-  # Low level funcctions
+  # Low level functions
 
   @doc """
   Exchanges a given S7 PDU (protocol data unit) with the CPU.
@@ -406,6 +474,51 @@ defmodule Snapex7.Client do
       end
 
     {:reply, response, new_state}
+  end
+
+  def handle_call({:set_connection_type, connection_type}, _from, state) do
+    connection_type = Keyword.fetch!(@connection_types, connection_type)
+    response = call_port(state, :set_connection_type, connection_type)
+    {:reply, response, state}
+  end
+
+  def handle_call({:set_connection_params, opts}, _from, state) do
+    ip = Keyword.fetch!(opts, :ip)
+    local_tsap = Keyword.get(opts, :local_tsap, 0)
+    remote_tsap = Keyword.get(opts, :remote_tsap, 0)
+    response = call_port(state, :set_connection_params, {ip, local_tsap, remote_tsap})
+    {:reply, response, state}
+  end
+
+  def handle_call(:connect, _from, state) do
+    response = call_port(state, :connect, nil)
+
+    new_state =
+      case response do
+        :ok ->
+          %{state | state: :connected}
+
+        {:error, _x} ->
+          %State{state | state: :idle}
+      end
+
+    {:reply, response, new_state}
+  end
+
+  def handle_call(:disconnect, {_from, _}, state) do
+    response = call_port(state, :disconnect, nil)
+    new_state = %State{state | state: :idle}
+    {:reply, response, new_state}
+  end
+
+  def handle_call({:get_params, param_number}, {_from, _}, state) do
+    response = call_port(state, :get_params, param_number)
+    {:reply, response, state}
+  end
+
+  def handle_call({:set_params, param_number, value}, {_from, _}, state) do
+    response = call_port(state, :set_params, {param_number, value})
+    {:reply, response, state}
   end
 
   # Directory functions
