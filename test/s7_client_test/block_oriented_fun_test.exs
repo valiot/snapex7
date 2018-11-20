@@ -15,6 +15,7 @@ defmodule BlockOrientedFunTest do
       :connected ->
         resp = Snapex7.Client.full_upload(state.pid, :OB, 0x41, 4)
         assert resp == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -25,6 +26,7 @@ defmodule BlockOrientedFunTest do
       :connected ->
         resp = Snapex7.Client.upload(state.pid, :OB, 0x41, 4)
         assert resp == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -35,6 +37,7 @@ defmodule BlockOrientedFunTest do
       :connected ->
         resp = Snapex7.Client.download(state.pid, 0x38, <<0x02, 0x34, 0x35>>)
         assert resp == {:error, %{eiso: nil, es7: :errCliInvalidBlockSize, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -45,6 +48,7 @@ defmodule BlockOrientedFunTest do
       :connected ->
         resp = Snapex7.Client.delete(state.pid, :OB, 0x03)
         assert resp == {:error, %{eiso: nil, es7: :errCliDeleteRefused, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -55,6 +59,7 @@ defmodule BlockOrientedFunTest do
       :connected ->
         resp = Snapex7.Client.db_get(state.pid, 0)
         assert resp == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -65,10 +70,9 @@ defmodule BlockOrientedFunTest do
       :connected ->
         resp = Snapex7.Client.db_fill(state.pid, 2, 0)
         assert resp == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
   end
-
 end
-

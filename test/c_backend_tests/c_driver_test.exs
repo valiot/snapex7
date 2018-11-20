@@ -3,9 +3,19 @@ defmodule CDriverTest do
   doctest Snapex7
 
   setup do
-    System.put_env("LD_LIBRARY_PATH", "./src") #checar como cambiar esto para que use :code.priv_dir
+    # checar como cambiar esto para que use :code.priv_dir
+    System.put_env("LD_LIBRARY_PATH", "./src")
     executable = :code.priv_dir(:snapex7) ++ '/s7_client.o'
-    port =  Port.open({:spawn_executable, executable}, [{:args, []}, {:packet, 2}, :use_stdio, :binary, :exit_status])
+
+    port =
+      Port.open({:spawn_executable, executable}, [
+        {:args, []},
+        {:packet, 2},
+        :use_stdio,
+        :binary,
+        :exit_status
+      ])
+
     %{port: port}
   end
 
@@ -17,6 +27,7 @@ defmodule CDriverTest do
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error
@@ -25,6 +36,7 @@ defmodule CDriverTest do
           # Not sure how this can be recovered
           exit(:port_timed_out)
       end
+
     assert c_response == :ok
   end
 
@@ -90,6 +102,33 @@ defmodule CDriverTest do
   #     end
   #   IO.puts("#{inspect(c_response)}")
 
+  #   c_response =
+  #     receive do
+  #       {_, {:data, <<?r, response::binary>>}} ->
+  #         :erlang.binary_to_term(response)
+  #       x ->
+  #         IO.inspect(x)
+  #         :error
+  #     after
+  #       1000 ->
+  #         # Not sure how this can be recovered
+  #         exit(:port_timed_out)
+  #     end
+  #   IO.puts("#{inspect(c_response)}")
+
+  #   c_response =
+  #     receive do
+  #       {_, {:data, <<?r, response::binary>>}} ->
+  #         :erlang.binary_to_term(response)
+  #       x ->
+  #         IO.inspect(x)
+  #         :error
+  #     after
+  #       1000 ->
+  #         # Not sure how this can be recovered
+  #         exit(:port_timed_out)
+  #     end
+  #   IO.puts("#{inspect(c_response)}")
 
   #   c_response =
   #     receive do
@@ -119,7 +158,6 @@ defmodule CDriverTest do
   #     end
   #   IO.puts("#{inspect(c_response)}")
 
-
   #   c_response =
   #     receive do
   #       {_, {:data, <<?r, response::binary>>}} ->
@@ -147,36 +185,6 @@ defmodule CDriverTest do
   #         exit(:port_timed_out)
   #     end
   #   IO.puts("#{inspect(c_response)}")
-
-
-  #   c_response =
-  #     receive do
-  #       {_, {:data, <<?r, response::binary>>}} ->
-  #         :erlang.binary_to_term(response)
-  #       x ->
-  #         IO.inspect(x)
-  #         :error
-  #     after
-  #       1000 ->
-  #         # Not sure how this can be recovered
-  #         exit(:port_timed_out)
-  #     end
-  #   IO.puts("#{inspect(c_response)}")
-
-  #   c_response =
-  #     receive do
-  #       {_, {:data, <<?r, response::binary>>}} ->
-  #         :erlang.binary_to_term(response)
-  #       x ->
-  #         IO.inspect(x)
-  #         :error
-  #     after
-  #       1000 ->
-  #         # Not sure how this can be recovered
-  #         exit(:port_timed_out)
-  #     end
-  #   IO.puts("#{inspect(c_response)}")
-
 
   #   c_response =
   #     receive do

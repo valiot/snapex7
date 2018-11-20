@@ -3,9 +3,19 @@ defmodule CliAdminFuncTest do
   doctest Snapex7
 
   setup do
-    System.put_env("LD_LIBRARY_PATH", "./src") #checar como cambiar esto para que use :code.priv_dir
+    # checar como cambiar esto para que use :code.priv_dir
+    System.put_env("LD_LIBRARY_PATH", "./src")
     executable = :code.priv_dir(:snapex7) ++ '/s7_client.o'
-    port =  Port.open({:spawn_executable, executable}, [{:args, []}, {:packet, 2}, :use_stdio, :binary, :exit_status])
+
+    port =
+      Port.open({:spawn_executable, executable}, [
+        {:args, []},
+        {:packet, 2},
+        :use_stdio,
+        :binary,
+        :exit_status
+      ])
+
     %{port: port}
   end
 
@@ -17,6 +27,7 @@ defmodule CliAdminFuncTest do
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error
@@ -37,6 +48,7 @@ defmodule CliAdminFuncTest do
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error
@@ -50,13 +62,15 @@ defmodule CliAdminFuncTest do
   end
 
   test "handle_connect_to test", state do
-    msg = {:connect_to, {"192.168.0.1", 0, 1}}  #
+    #
+    msg = {:connect_to, {"192.168.0.1", 0, 1}}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
     c_response =
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error
@@ -65,15 +79,18 @@ defmodule CliAdminFuncTest do
           # Not sure how this can be recovered
           exit(:port_timed_out)
       end
+
     d_response =
       case c_response do
         {:error, x} ->
           IO.puts("connected_to response is #{inspect(x)}")
           :error
+
         :ok ->
           :ok
       end
-    #no plc connected or connected
+
+    # no plc connected or connected
     assert d_response == :error || d_response == :ok
   end
 
@@ -85,6 +102,7 @@ defmodule CliAdminFuncTest do
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error
@@ -93,14 +111,17 @@ defmodule CliAdminFuncTest do
           # Not sure how this can be recovered
           exit(:port_timed_out)
       end
+
     d_response =
       case c_response do
         {:error, _x} ->
           :error
+
         :ok ->
           :ok
       end
-    #no plc connected or connected
+
+    # no plc connected or connected
     assert d_response == :error || d_response == :ok
   end
 
@@ -112,6 +133,7 @@ defmodule CliAdminFuncTest do
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error
@@ -127,9 +149,11 @@ defmodule CliAdminFuncTest do
   test "handler_get_params/handler_set_params test", state do
     msg = {:set_params, {2, 103}}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
     receive do
       {_, {:data, <<?r, response::binary>>}} ->
         :erlang.binary_to_term(response)
+
       x ->
         IO.inspect(x)
         :error
@@ -145,6 +169,7 @@ defmodule CliAdminFuncTest do
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error
@@ -157,9 +182,11 @@ defmodule CliAdminFuncTest do
 
     msg = {:set_params, {3, 800}}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
     receive do
       {_, {:data, <<?r, response::binary>>}} ->
         :erlang.binary_to_term(response)
+
       x ->
         IO.inspect(x)
         :error
@@ -175,6 +202,7 @@ defmodule CliAdminFuncTest do
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error
@@ -188,9 +216,11 @@ defmodule CliAdminFuncTest do
 
     msg = {:set_params, {4, 20}}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
     receive do
       {_, {:data, <<?r, response::binary>>}} ->
         :erlang.binary_to_term(response)
+
       x ->
         IO.inspect(x)
         :error
@@ -206,6 +236,7 @@ defmodule CliAdminFuncTest do
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error
@@ -219,9 +250,11 @@ defmodule CliAdminFuncTest do
 
     msg = {:set_params, {5, 3500}}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
     receive do
       {_, {:data, <<?r, response::binary>>}} ->
         :erlang.binary_to_term(response)
+
       x ->
         IO.inspect(x)
         :error
@@ -237,6 +270,7 @@ defmodule CliAdminFuncTest do
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error
@@ -250,9 +284,11 @@ defmodule CliAdminFuncTest do
 
     msg = {:set_params, {7, 512}}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
     receive do
       {_, {:data, <<?r, response::binary>>}} ->
         :erlang.binary_to_term(response)
+
       x ->
         IO.inspect(x)
         :error
@@ -268,6 +304,7 @@ defmodule CliAdminFuncTest do
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error
@@ -281,9 +318,11 @@ defmodule CliAdminFuncTest do
 
     msg = {:set_params, {8, 1}}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
     receive do
       {_, {:data, <<?r, response::binary>>}} ->
         :erlang.binary_to_term(response)
+
       x ->
         IO.inspect(x)
         :error
@@ -299,6 +338,7 @@ defmodule CliAdminFuncTest do
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error
@@ -312,9 +352,11 @@ defmodule CliAdminFuncTest do
 
     msg = {:set_params, {9, 127}}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
     receive do
       {_, {:data, <<?r, response::binary>>}} ->
         :erlang.binary_to_term(response)
+
       x ->
         IO.inspect(x)
         :error
@@ -330,6 +372,7 @@ defmodule CliAdminFuncTest do
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error
@@ -343,9 +386,11 @@ defmodule CliAdminFuncTest do
 
     msg = {:set_params, {10, 500}}
     send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
     receive do
       {_, {:data, <<?r, response::binary>>}} ->
         :erlang.binary_to_term(response)
+
       x ->
         IO.inspect(x)
         :error
@@ -361,6 +406,7 @@ defmodule CliAdminFuncTest do
       receive do
         {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
+
         x ->
           IO.inspect(x)
           :error

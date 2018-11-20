@@ -7,19 +7,29 @@ defmodule CliDateTimeTest do
   # These tests only help us to track the input variables.
 
   setup do
-    System.put_env("LD_LIBRARY_PATH", "./src") #checar como cambiar esto para que use :code.priv_dir
+    # checar como cambiar esto para que use :code.priv_dir
+    System.put_env("LD_LIBRARY_PATH", "./src")
     executable = :code.priv_dir(:snapex7) ++ '/s7_client.o'
-    port =  Port.open({:spawn_executable, executable}, [{:args, []}, {:packet, 2}, :use_stdio, :binary, :exit_status])
+
+    port =
+      Port.open({:spawn_executable, executable}, [
+        {:args, []},
+        {:packet, 2},
+        :use_stdio,
+        :binary,
+        :exit_status
+      ])
 
     msg = {:connect_to, {"192.168.0.1", 0, 1}}
     send(port, {self(), {:command, :erlang.term_to_binary(msg)}})
+
     status =
       receive do
-        {_, {:data, <<?r, response::binary>>}}  ->
+        {_, {:data, <<?r, response::binary>>}} ->
           :erlang.binary_to_term(response)
-        after
-          10000  ->
-            :error
+      after
+        10000 ->
+          :error
       end
 
     %{port: port, status: status}
@@ -28,13 +38,15 @@ defmodule CliDateTimeTest do
   test "handle_get_plc_date_time", state do
     case state.status do
       :ok ->
-        msg = {:get_plc_date_time, nil} #nil
+        # nil
+        msg = {:get_plc_date_time, nil}
         send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
         c_response =
           receive do
             {_, {:data, <<?r, response::binary>>}} ->
               :erlang.binary_to_term(response)
+
             x ->
               IO.inspect(x)
               :error
@@ -45,6 +57,7 @@ defmodule CliDateTimeTest do
           end
 
         assert c_response == {:error, %{eiso: nil, es7: :errCliItemNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -52,7 +65,8 @@ defmodule CliDateTimeTest do
 
   test "handle_set_plc_date_time", state do
     case state.status do
-      :ok ->              #{sec, min, hour, mday, mon, year, wday, yday, isdst}
+      # {sec, min, hour, mday, mon, year, wday, yday, isdst}
+      :ok ->
         msg = {:set_plc_date_time, {1, 2, 3, 29, 12, 2018, 0, 355, 1}}
         send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
@@ -60,6 +74,7 @@ defmodule CliDateTimeTest do
           receive do
             {_, {:data, <<?r, response::binary>>}} ->
               :erlang.binary_to_term(response)
+
             x ->
               IO.inspect(x)
               :error
@@ -70,6 +85,7 @@ defmodule CliDateTimeTest do
           end
 
         assert c_response == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -78,13 +94,15 @@ defmodule CliDateTimeTest do
   test "handle_set_plc_system_date_time", state do
     case state.status do
       :ok ->
-        msg = {:set_plc_system_date_time, nil} #NA
+        # NA
+        msg = {:set_plc_system_date_time, nil}
         send(state.port, {self(), {:command, :erlang.term_to_binary(msg)}})
 
         c_response =
           receive do
             {_, {:data, <<?r, response::binary>>}} ->
               :erlang.binary_to_term(response)
+
             x ->
               IO.inspect(x)
               :error
@@ -95,6 +113,7 @@ defmodule CliDateTimeTest do
           end
 
         assert c_response == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end

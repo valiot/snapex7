@@ -1278,7 +1278,7 @@ static void handle_mb_write(const char *req, int *req_index)
 */
 static void handle_tm_read(const char *req, int *req_index)
 {
-    const char data_len = 1;
+    const char data_len = 2;
     int term_type;
     int term_size;
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
@@ -1316,7 +1316,7 @@ static void handle_tm_read(const char *req, int *req_index)
 */
 static void handle_tm_write(const char *req, int *req_index)
 {
-    const char data_len = 1;
+    const char data_len = 2;
     int term_type;
     int term_size;
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
@@ -1359,7 +1359,7 @@ static void handle_tm_write(const char *req, int *req_index)
 */
 static void handle_ct_read(const char *req, int *req_index)
 {
-    const char data_len = 1;
+    const char data_len = 2;
     int term_type;
     int term_size;
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
@@ -1397,7 +1397,7 @@ static void handle_ct_read(const char *req, int *req_index)
 */
 static void handle_ct_write(const char *req, int *req_index)
 {
-    const char data_len = 1;
+    const char data_len = 2;
     int term_type;
     int term_size;
     if(ei_decode_tuple_header(req, req_index, &term_size) < 0 ||
@@ -1487,7 +1487,7 @@ static void handle_read_multi_vars(const char *req, int *req_index)
             
             if(!strcmp(atom, "amount"))
                 Items[i_struct].Amount = (int)value;            
-            else if(!strcmp(atom, "wordlen"))
+            else if(!strcmp(atom, "word_len"))
             {
                 Items[i_struct].WordLen = (int)value;
                 switch(value)
@@ -1513,7 +1513,7 @@ static void handle_read_multi_vars(const char *req, int *req_index)
                     break;
                 }
             }
-            else if(!strcmp(atom, "dbnumber")) 
+            else if(!strcmp(atom, "db_number")) 
                 Items[i_struct].DBNumber = (int)value;
             else if(!strcmp(atom, "start")) 
                 Items[i_struct].Start = (int)value;
@@ -1591,7 +1591,7 @@ static void handle_write_multi_vars(const char *req, int *req_index)
                 return;
             }
             
-            if(!strcmp(atom, "pdata")) 
+            if(!strcmp(atom, "data")) 
             {
                 if(ei_decode_binary(req, req_index, data, &bin_size) < 0)
                 {
@@ -1608,7 +1608,7 @@ static void handle_write_multi_vars(const char *req, int *req_index)
             }
             if(!strcmp(atom, "amount"))
                 Items[i_struct].Amount = (int)value;            
-            else if(!strcmp(atom, "wordlen"))
+            else if(!strcmp(atom, "word_len"))
             { 
                 Items[i_struct].WordLen = (int)value;
                 switch(value)
@@ -1634,7 +1634,7 @@ static void handle_write_multi_vars(const char *req, int *req_index)
                     break;
                 }
             }
-            else if(!strcmp(atom, "dbnumber")) 
+            else if(!strcmp(atom, "db_number")) 
                 Items[i_struct].DBNumber = (int)value;
             else if(!strcmp(atom, "start")) 
                 Items[i_struct].Start = (int)value;

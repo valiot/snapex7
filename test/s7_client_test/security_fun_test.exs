@@ -14,7 +14,9 @@ defmodule SecurityFunTest do
     case state.status do
       :connected ->
         resp = Snapex7.Client.set_session_password(state.pid, "holahola")
-        assert resp == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}} #when PLC is running
+        # when PLC is running
+        assert resp == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -25,7 +27,9 @@ defmodule SecurityFunTest do
     case state.status do
       :connected ->
         resp = Snapex7.Client.clear_session_password(state.pid)
-        assert resp == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}} #when PLC is running
+        # when PLC is running
+        assert resp == {:error, %{eiso: nil, es7: :errCliFunNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
@@ -35,10 +39,11 @@ defmodule SecurityFunTest do
     case state.status do
       :connected ->
         resp = Snapex7.Client.get_protection(state.pid)
-        assert resp == {:error, %{eiso: nil, es7: :errCliItemNotAvailable, etcp: nil}} #when PLC is running
+        # when PLC is running
+        assert resp == {:error, %{eiso: nil, es7: :errCliItemNotAvailable, etcp: nil}}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
   end
-
 end
