@@ -13,6 +13,12 @@ defmodule Snapex7.Client do
     SFB: 0x46
   ]
 
+  @connection_types [
+    PG: 0x01,
+    OP: 0x02,
+    S7_basic: 0x03
+  ]
+
   @area_types [
     PE: 0x81,
     PA: 0x82,
@@ -74,6 +80,8 @@ defmodule Snapex7.Client do
           {:ip, bitstring}
           | {:rack, 0..7}
           | {:slot, 1..31}
+          | {:local_tsap, integer}
+          | {:remote_tsap, integer}
 
   @doc """
   Connect to a S7 server.
@@ -93,6 +101,66 @@ defmodule Snapex7.Client do
   @spec connect_to(GenServer.server(), [connect_opt]) :: :ok | {:error, map()} | {:error, :einval}
   def connect_to(pid, opts \\ []) do
     GenServer.call(pid, {:connect_to, opts})
+  end
+
+  @doc """
+  Sets the connection resource type, i.e the way in which the Clients connects to a PLC.
+  """
+  @spec set_connection_type(GenServer.server(), atom()) ::
+          :ok | {:error, map()} | {:error, :einval}
+  def set_connection_type(pid, connection_type) do
+    GenServer.call(pid, {:set_connection_type, connection_type})
+  end
+
+  @doc """
+  Sets internally (IP, LocalTSAP, RemoteTSAP) Coordinates
+  The following options are available:
+
+    * `:ip` - (string) PLC/Equipment IPV4 Address (e.g., "192.168.0.1")
+
+    * `:local_tsap` - (int) Local TSAP (PC TSAP) // 0.
+
+    * `:remote_tsap` - (int) Remote TSAP (PLC TSAP) // 0.
+  """
+  @spec set_connection_params(GenServer.server(), [connect_opt]) ::
+          :ok | {:error, map()} | {:error, :einval}
+  def set_connection_params(pid, opts \\ []) do
+    GenServer.call(pid, {:set_connection_params, opts})
+  end
+
+  @doc """
+  Connects the client to the PLC with the parameters specified in the previous call of
+  `connect_to/2` or `set_connection_params/2`.
+  """
+  @spec connect(GenServer.server()) :: :ok | {:error, map()} | {:error, :einval}
+  def connect(pid) do
+    GenServer.call(pid, :connect)
+  end
+
+  @doc """
+  Disconnects “gracefully” the Client from the PLC.
+  """
+  @spec disconnect(GenServer.server()) :: :ok | {:error, map()} | {:error, :einval}
+  def disconnect(pid) do
+    GenServer.call(pid, :disconnect)
+  end
+
+  @doc """
+  Reads an internal Client object parameter.
+  For more info see pg. 89 form Snap7 docs.
+  """
+  @spec get_params(GenServer.server(), integer()) :: :ok | {:error, map()} | {:error, :einval}
+  def get_params(pid, param_number) do
+    GenServer.call(pid, {:get_params, param_number})
+  end
+
+  @doc """
+  Sets an internal Client object parameter.
+  """
+  @spec set_params(GenServer.server(), integer(), integer()) ::
+          :ok | {:error, map()} | {:error, :einval}
+  def set_params(pid, param_number, value) do
+    GenServer.call(pid, {:set_params, param_number, value})
   end
 
   @type data_io_opt ::
@@ -425,7 +493,8 @@ defmodule Snapex7.Client do
 
   For more info see pg. 119 form Snap7 docs.
   """
-  @spec write_multi_vars(GenServer.server(), [data_io_opt]) :: :ok | {:error, map()} | {:error, :einval}
+  @spec write_multi_vars(GenServer.server(), [data_io_opt]) ::
+          :ok | {:error, map()} | {:error, :einval}
   def write_multi_vars(pid, opts) do
     GenServer.call(pid, {:write_multi_vars, opts})
   end
@@ -808,6 +877,51 @@ defmodule Snapex7.Client do
       end
 
     {:reply, response, new_state}
+  end
+
+  def handle_call({:set_connection_type, connection_type}, _from, state) do
+    connection_type = Keyword.fetch!(@connection_types, connection_type)
+    response = call_port(state, :set_connection_type, connection_type)
+    {:reply, response, state}
+  end
+
+  def handle_call({:set_connection_params, opts}, _from, state) do
+    ip = Keyword.fetch!(opts, :ip)
+    local_tsap = Keyword.get(opts, :local_tsap, 0)
+    remote_tsap = Keyword.get(opts, :remote_tsap, 0)
+    response = call_port(state, :set_connection_params, {ip, local_tsap, remote_tsap})
+    {:reply, response, state}
+  end
+
+  def handle_call(:connect, _from, state) do
+    response = call_port(state, :connect, nil)
+
+    new_state =
+      case response do
+        :ok ->
+          %{state | state: :connected}
+
+        {:error, _x} ->
+          %State{state | state: :idle}
+      end
+
+    {:reply, response, new_state}
+  end
+
+  def handle_call(:disconnect, {_from, _}, state) do
+    response = call_port(state, :disconnect, nil)
+    new_state = %State{state | state: :idle}
+    {:reply, response, new_state}
+  end
+
+  def handle_call({:get_params, param_number}, {_from, _}, state) do
+    response = call_port(state, :get_params, param_number)
+    {:reply, response, state}
+  end
+
+  def handle_call({:set_params, param_number, value}, {_from, _}, state) do
+    response = call_port(state, :set_params, {param_number, value})
+    {:reply, response, state}
   end
 
   # Data I/O functions

@@ -337,6 +337,7 @@ defmodule DataIoFunTest do
       start: 0,
       amount: 1
     }
+
     case state.status do
       :connected ->
         resp = Snapex7.Client.write_multi_vars(state.pid, data: [data1, data2])
@@ -350,6 +351,7 @@ defmodule DataIoFunTest do
 
         resp = Snapex7.Client.read_multi_vars(state.pid, data: [r_data1, r_data2, r_data3])
         assert resp == {:ok, [<<0x42, 0xCA, 0x00, 0x00>>, <<0x00>>, <<0x08>>]}
+
       _ ->
         IO.puts("(#{__MODULE__}) Not connected")
     end
