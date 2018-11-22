@@ -1,0 +1,6 @@
+[submodule "scr/snap7"]
+	path = scr/snap7
+	url = git@github.com:valiot/snap7.git
+[submodule "src/snap7"]
+	path = src/snap7
+	url = git@github.com:valiot/snap7.git
