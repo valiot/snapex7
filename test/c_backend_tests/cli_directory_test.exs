@@ -6,8 +6,8 @@ defmodule CliDirectoryTest do
   # we have a PLC that doesn't supports these functions (S7-1200).
 
   setup do
-    # checar como cambiar esto para que use :code.priv_dir
-    System.put_env("LD_LIBRARY_PATH", "./src")
+    snap7_dir = :code.priv_dir(:snapex7) |> List.to_string()
+    System.put_env("LD_LIBRARY_PATH", snap7_dir)
     executable = :code.priv_dir(:snapex7) ++ '/s7_client.o'
 
     port =

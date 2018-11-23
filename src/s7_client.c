@@ -744,8 +744,8 @@ static void handle_set_params(const char *req, int *req_index)
         return;
     }
 
-    int64_t data;
-    if (ei_decode_long(req, req_index, &data) < 0) {
+    long long data;
+    if (ei_decode_longlong(req, req_index, &data) < 0) {
         send_error_response("einval");
         return;
     }

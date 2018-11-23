@@ -5,8 +5,8 @@ defmodule CliPlcControlTest do
   # (we've a plc s7-1200 and snap7 server doesn't support these functions)
   # These tests only help us to track the input variables.
   setup do
-    # checar como cambiar esto para que use :code.priv_dir
-    System.put_env("LD_LIBRARY_PATH", "./src")
+    snap7_dir = :code.priv_dir(:snapex7) |> List.to_string()
+    System.put_env("LD_LIBRARY_PATH", snap7_dir)
     executable = :code.priv_dir(:snapex7) ++ '/s7_client.o'
 
     port =
