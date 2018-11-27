@@ -130,6 +130,7 @@ $(IntermediateDirectory)/.d:
 ##
 
 $(IntermediateDirectory)/sys_snap_msgsock.o: 
+	@pwd || echo 
 	$(CXX) $(SourceSwitch) "src/snap7/src/sys/snap_msgsock.cpp" $(CXXFLAGS) -o $(IntermediateDirectory)/sys_snap_msgsock.o $(IncludePath)
 
 $(IntermediateDirectory)/sys_snap_sysutils.o:
