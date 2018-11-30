@@ -832,8 +832,10 @@ defmodule Snapex7.Client do
 
   @spec init([]) :: {:ok, Snapex7.Client.State.t()}
   def init([]) do
-    # change this to :code.priv_dir (Change Makefile)
-    System.put_env("LD_LIBRARY_PATH", "./src")
+    snap7_dir = :code.priv_dir(:snapex7) |> List.to_string()
+    System.put_env("LD_LIBRARY_PATH", snap7_dir)
+    System.put_env("DYLD_LIBRARY_PATH", snap7_dir)
+
     executable = :code.priv_dir(:snapex7) ++ '/s7_client.o'
 
     port =

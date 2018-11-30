@@ -9,7 +9,11 @@ defmodule Snapex7.MixProject do
       start_permanent: Mix.env() == :prod,
       compilers: [:elixir_make] ++ Mix.compilers(),
       make_executable: "make",
-      deps: deps()
+      deps: deps(),
+      name: "Snapex7",
+      description: description(),
+      package: package(),
+      source_url: "https://github.com/valiot/snapex7"
     ]
   end
 
@@ -20,12 +24,34 @@ defmodule Snapex7.MixProject do
     ]
   end
 
+  defp description() do
+    "Elixir wrapper for Snap7, for communication with Siemens PLC's."
+  end
+
+  defp package() do
+    [
+      files: [
+        "lib",
+        "src/*.[ch]",
+        "src/snap7/*.[ch]",
+        "Makefile",
+        "test",
+        "mix.exs",
+        "README.md",
+        "LICENSE",
+      ],
+      maintainers: ["valiot"],
+      licenses: ["MIT"],
+      links: %{"GitHub" => "https://github.com/valiot/snapex7"}
+    ]
+  end
+
+
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:elixir_make, "~> 0.4", runtime: false}
-      # {:dep_from_hexpm, "~> 0.3.0"},
-      # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
+      {:elixir_make, "~> 0.4", runtime: false},
+      {:ex_doc, "~> 0.19", only: :dev}
     ]
   end
 end
