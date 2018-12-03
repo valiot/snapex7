@@ -33,7 +33,9 @@ defmodule Snapex7.MixProject do
       files: [
         "lib",
         "src/*.[ch]",
-        "src/snap7/*.[ch]",
+        "src/snap7/src",
+        "src/snap7/build",
+        "src/snap7/examples/plain-c/*.h",
         "Makefile",
         "test",
         "mix.exs",
