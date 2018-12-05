@@ -60,7 +60,7 @@ endif
 CXXFLAGS   := -O3 -fPIC -pedantic
 Platform               :=$(TargetCPU)-$(OS)
 ConfigurationName      :=Release
-IntermediateDirectory  :=src/snap7/build/temp/$(TargetCPU)
+IntermediateDirectory  :=src/snap7/$(TargetCPU)
 OutDir                 := $(IntermediateDirectory)
 SharedObjectLinkerName :=-shared -fPIC
 DebugSwitch            :=-gstab
@@ -123,7 +123,7 @@ $(OutputFile): $(OBJ_SNAP7) $(Objects)
 	@echo debug: $@, $^
 	@$(MakeDirCommand) $(LibInstall) 
 	@$(MakeDirCommand) $(@D)
-	@$(MakeDirCommand) $(IntermediateDirectory)
+	@
 	@echo $(Objects0)  > $(ObjectsFileList)
 	$(CXX) $(SharedObjectLinkerName) $(OutputSwitch)$(OutputFile) @$(ObjectsFileList) $(LibPath) $(Libs) $(LinkOptions)
 	$(RM) $(ObjectsFileList)
@@ -133,7 +133,7 @@ $(OutputFile): $(OBJ_SNAP7) $(Objects)
 ## SNAP7 Objects
 ##
 $(IntermediateDirectory)/sys_snap_msgsock.o: 
-	@test -d src/snap7/build/temp/$(TargetCPU) || $(MakeDirCommand) src/snap7/build/temp/$(TargetCPU)
+	@test -d $(IntermediateDirectory) || $(MakeDirCommand) $(IntermediateDirectory)
 	$(CXX) $(SourceSwitch) "src/snap7/src/sys/snap_msgsock.cpp" $(CXXFLAGS) -o $(IntermediateDirectory)/sys_snap_msgsock.o $(IncludePath)
 
 $(IntermediateDirectory)/sys_snap_sysutils.o:
@@ -186,6 +186,6 @@ clean:
 	$(RM) $(IntermediateDirectory)/*.o
 	$(RM) $(OutputFile)
 	$(RM) -f $(LibInstall)/*.o  $(LibInstall)/*.so $(SRC_PATH)/*.o 
-	$(RM) -rf $(LibInstall)
+	$(RM) -rf $(LibInstall) $(IntermediateDirectory)
 	
 
