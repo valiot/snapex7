@@ -1,5 +1,6 @@
 defmodule Snapex7.Client do
   use GenServer
+  require Logger
 
   @c_timeout 5000
 
@@ -830,6 +831,19 @@ defmodule Snapex7.Client do
     GenServer.call(pid, :get_connected)
   end
 
+  @doc """
+  This function can execute any desired function as a request.
+  The `request` can be a tuple (the first element is an atom according to the desired function to be executed,
+  and the following elements are the args of the desired function) or an atom (when the desired function
+  has no arguments), for example:
+    request = {:connect_to , [ip: "192.168.1.100", rack: 0, slot: 0]},
+    request = :get_connected
+  """
+  @spec command(GenServer.server(), term) :: :ok | {:ok, term} | {:error, map} | {:error, :einval}
+  def command(pid, request) do
+    GenServer.call(pid, request)
+  end
+
   @spec init([]) :: {:ok, Snapex7.Client.State.t()}
   def init([]) do
     snap7_dir = :code.priv_dir(:snapex7) |> List.to_string()
@@ -1265,6 +1279,12 @@ defmodule Snapex7.Client do
 
   def handle_call(:get_connected, _from, state) do
     response = call_port(state, :get_connected, nil)
+    {:reply, response, state}
+  end
+
+  def handle_call(request, _from, state) do
+    Logger.error("(#{__MODULE__}) Invalid request: #{inspect(request)}")
+    response = {:error, :einval}
     {:reply, response, state}
   end
 

@@ -40,14 +40,13 @@ defmodule Snapex7.MixProject do
         "test",
         "mix.exs",
         "README.md",
-        "LICENSE",
+        "LICENSE"
       ],
       maintainers: ["valiot"],
       licenses: ["MIT"],
       links: %{"GitHub" => "https://github.com/valiot/snapex7"}
     ]
   end
-
 
   # Run "mix help deps" to learn about dependencies.
   defp deps do
