@@ -256,7 +256,6 @@ git clone --recursive git@github.com:valiot/snap7.git
 ```
 
 ## License
-  <img src="assets/images/valiot-logo-blue.png" alt="Valiot Logo" width="128" height="38" />
 
   See [LICENSE](./LICENSE).
   
