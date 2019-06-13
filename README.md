@@ -1,6 +1,13 @@
-# Snapex7
-<img src="assets/images/valiot-logo-blue.png" alt="Valiot Logo" width="192" height="57" />
+<div align="center">
+  <img src="assets/images/snapex7-logo.jpg" alt="Snapex7 Logo" width="256" height="151" />
+</div>
 
+***
+<br>
+<div align="center">
+  <img src="assets/images/valiot-logo-blue.png" alt="Valiot Logo" width="192" height="57" />
+</div>
+<br>
 Snapex7 is an Elixir wrapper for the Snap7 library. Snap7 i san open source, 32/64 bit, multi-platform Ethernet communication suite for interfacing natively with Siemens S7 PLCs (See [Target Compatibility](#target-compatibility)).
 
  * Snapex7 is developer for snap7 1.4.2 and Elixir 1.8.1. It is tested on:
@@ -248,10 +255,13 @@ If you wish to clone this Repo use:
 git clone --recursive git@github.com:valiot/snap7.git
 ```
 
+## License
+
+  See [LICENSE](./LICENSE).
+  
 ## TODO
   * **Better handling c code**
   * **Server implementation**
   * **Partner implementation**
   * **Asynchronous Client implementation**
-  * **Snapex7 Logo**
 
