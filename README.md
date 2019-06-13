@@ -1,6 +1,12 @@
-<img src="assets/images/snapex7-logo.jpg" alt="Snapex7 Logo" width="256" height="151" />
+<div align="center">
+  <img src="assets/images/snapex7-logo.jpg" alt="Snapex7 Logo" width="256" height="151" />
+</div>
 
 ***
+
+<div align="center">
+  <img src="assets/images/valiot-logo-blue.png" alt="Valiot Logo" width="192" height="57" />
+</div>
 
 Snapex7 is an Elixir wrapper for the Snap7 library. Snap7 i san open source, 32/64 bit, multi-platform Ethernet communication suite for interfacing natively with Siemens S7 PLCs (See [Target Compatibility](#target-compatibility)).
 
