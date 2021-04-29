@@ -1,11 +1,11 @@
 <div align="center">
-  <img src="assets/images/snapex7-logo.jpg" alt="Snapex7 Logo" width="256" height="151" />
+  <img src="https://raw.githubusercontent.com/valiot/snapex7/master/assets/images/snapex7-logo.jpg" alt="Snapex7 Logo" width="256" height="151" />
 </div>
 
 ***
 <br>
 <div align="center">
-  <img src="assets/images/valiot-logo-blue.png" alt="Valiot Logo" width="192" height="57" />
+  <img src="https://raw.githubusercontent.com/valiot/snapex7/master/assets/images/valiot-logo-blue.png" alt="Valiot Logo" width="192" height="57" />
 </div>
 <br>
 Snapex7 is an Elixir wrapper for the Snap7 library. Snap7 i san open source, 32/64 bit, multi-platform Ethernet communication suite for interfacing natively with Siemens S7 PLCs (See [Target Compatibility](#target-compatibility)).
@@ -50,7 +50,7 @@ Check compatibility with the component that you are using:
 
 Here is a summary compatibility table from the documentation above:
 
-<img src="assets/images/compatibility.png" alt="Compatibility" />
+<img src="https://raw.githubusercontent.com/valiot/snapex7/master/assets/images/compatibility.png" alt="Compatibility" />
 
 ## Using Snapex7
 
@@ -176,7 +176,7 @@ The same options of `Snapex.Client.read_area` are available here plus:
 ### Error format
 When a response returns an error, it will have the following format:
 ```elixir
-{:error, %{eiso: nil, es7: nil, etcp: 113}}
+iex> {:error, %{eiso: nil, es7: nil, etcp: 113}}
 ```
   * **eiso**: returns an atom with the ISO TCP error.
   * **es7**: returns an atom with the S7 protocol error.
