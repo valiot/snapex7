@@ -168,7 +168,7 @@ $(IntermediateDirectory)/lib_snap7_libmain.o:
 ##
 ## SNAPEX7 OBJECTS
 ##
-$(PREFIX)/%.o: $(BUILD)/erlcmd.o $(BUILD)/util.o $(BUILD)/%.o 
+$(PREFIX)/%.o: $(BUILD)/erlcmd.o $(BUILD)/%.o 
 	@echo debug
 	$(CC) -O3 $^ -L$(LibInstall) -I$(LibInstall) -lsnap $(ERL_LDFLAGS) $(LDFLAGS) -o $@
 
