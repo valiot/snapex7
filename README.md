@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="https://raw.githubusercontent.com/valiot/snapex7/master/assets/images/snapex7-logo.jpg" alt="Snapex7 Logo" width="256" height="151" />
+  <img src="https://raw.githubusercontent.com/valiot/snapex7/master/assets/images/snapex7-logo.png" alt="Snapex7 Logo" width="256" height="151" />
 </div>
 
 ***
