@@ -4,7 +4,7 @@ defmodule Snapex7.MixProject do
   def project do
     [
       app: :snapex7,
-      version: "0.1.3",
+      version: "0.1.4",
       elixir: "~> 1.8",
       name: "Snapex7",
       description: description(),

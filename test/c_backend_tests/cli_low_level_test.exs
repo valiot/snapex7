@@ -11,7 +11,7 @@ defmodule CliLowLevelTest do
     snap7_dir = :code.priv_dir(:snapex7) |> List.to_string()
     System.put_env("LD_LIBRARY_PATH", snap7_dir)
     System.put_env("DYLD_LIBRARY_PATH", snap7_dir)
-    executable = :code.priv_dir(:snapex7) ++ '/s7_client.o'
+    executable = :code.priv_dir(:snapex7) ++ ~c"/s7_client.o"
 
     port =
       Port.open({:spawn_executable, executable}, [
